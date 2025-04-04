@@ -1,52 +1,120 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 import { FaArrowUp, FaArrowDown } from "react-icons/fa";
+import axios from "axios";
 
 const SuccessRateCard = ({ selectedFilter }) => {
-  // Dummy success rate data for different filters
-  const successRateData = {
-    "This Year": {
-      physics: 78,
-      chemistry: 85,
-      biology: 65,
-      prevRate: 73, // Previous success rate
-    },
-    "This Month": {
-      physics: 70,
-      chemistry: 80,
-      biology: 60,
-      prevRate: 68,
-    },
-    "This Week": {
-      physics: 55,
-      chemistry: 75,
-      biology: 50,
-      prevRate: 62,
-    },
-  };
-
-  // State for dynamic data
-  const [data, setData] = useState(successRateData["This Year"]);
+  const [data, setData] = useState({
+    physics: 0,
+    chemistry: 0,
+    biology: 0,
+    prevRate: 0,
+  });
   const [successRate, setSuccessRate] = useState(0);
+  const [isIncreasing, setIsIncreasing] = useState(false);
+  const [trendPercentage, setTrendPercentage] = useState(0);
 
   useEffect(() => {
-    setData(successRateData[selectedFilter]);
-    setSuccessRate(Math.round((successRateData[selectedFilter].physics + successRateData[selectedFilter].chemistry + successRateData[selectedFilter].biology) / 3));
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem("authToken");
+        const response = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_BASE_URL}/dashboard/success`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        const rawData = response.data;
+        const currentDate = new Date();
+
+        const isSameYear = (date) =>
+          new Date(date).getFullYear() === currentDate.getFullYear();
+        const isSameMonth = (date) =>
+          isSameYear(date) &&
+          new Date(date).getMonth() === currentDate.getMonth();
+        const isSameWeek = (date) => {
+          const testDate = new Date(date);
+          const weekStart = new Date(currentDate);
+          weekStart.setDate(currentDate.getDate() - currentDate.getDay());
+          return testDate >= weekStart;
+        };
+
+        let filtered = [];
+        switch (selectedFilter) {
+          case "This Year":
+            filtered = rawData.filter((item) => isSameYear(item.updatedAt));
+            break;
+          case "This Month":
+            filtered = rawData.filter((item) => isSameMonth(item.updatedAt));
+            break;
+          case "This Week":
+            filtered = rawData.filter((item) => isSameWeek(item.updatedAt));
+            break;
+          default:
+            filtered = rawData;
+        }
+
+        const calculateTotalMarks = (filteredData) => {
+          const total = { physics: 0, chemistry: 0, biology: 0 };
+          filteredData.forEach((item) => {
+            total.physics += item.Physics || 0;
+            total.chemistry += item.Chemistry || 0;
+            total.biology += item.Biology || 0;
+          });
+          return total;
+        };
+
+        const totalMarks = calculateTotalMarks(filtered);
+
+        // Calculate success rate (ensure it does not exceed 100%)
+        const avgSuccessRate = Math.min(
+          Math.round(
+            (totalMarks.physics + totalMarks.chemistry + totalMarks.biology) / 3
+          ),
+          100
+        );
+
+        // Determine trend
+        const prevRate = data.prevRate || 0;
+        const isTrendIncreasing = avgSuccessRate > prevRate;
+        const trendPercent = Math.min(
+          (((avgSuccessRate - prevRate) / (prevRate || 1)) * 100).toFixed(1),
+          100
+        );
+
+        setIsIncreasing(isTrendIncreasing);
+        setTrendPercentage(trendPercent);
+        setSuccessRate(avgSuccessRate);
+        setData({ ...totalMarks, prevRate: avgSuccessRate });
+      } catch (err) {
+        console.error("Error fetching success rate data:", err);
+      }
+    };
+
+    fetchData();
   }, [selectedFilter]);
 
-  // Calculate trend percentage and direction
-  const isIncreasing = successRate > data.prevRate;
+  // Determine trend icon and color
   const trendColor = isIncreasing ? "text-green-500" : "text-red-500";
   const TrendIcon = isIncreasing ? FaArrowUp : FaArrowDown;
-  const trendPercentage = (((successRate - data.prevRate) / data.prevRate) * 100).toFixed(1);
 
-  // Chart Data
+  // Prepare chart data
   const chartData = [
-    { subject: "Physics", rate: data.physics },
-    { subject: "Chemistry", rate: data.chemistry },
-    { subject: "Biology", rate: data.biology },
+    { subject: "Physics", rate: Math.min(data.physics, 100) },
+    { subject: "Chemistry", rate: Math.min(data.chemistry, 100) },
+    { subject: "Biology", rate: Math.min(data.biology, 100) },
   ];
 
   return (

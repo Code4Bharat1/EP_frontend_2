@@ -3,7 +3,6 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { FcNext } from "react-icons/fc";
 
-
 const Preview = () => {
   const [testName, setTestName] = useState("");
   const [selectedSection, setSelectedSection] = useState("");
@@ -13,7 +12,6 @@ const Preview = () => {
   const [newTestName, setNewTestName] = useState("");
   const [activeSubject, setActiveSubject] = useState(null);
   const router = useRouter();
-
 
   // Load saved test name, selected subjects, and chapters from localStorage
   useEffect(() => {
@@ -57,11 +55,10 @@ const Preview = () => {
   // };
 
   // Calculate total marks separately for each subject
-const calculateTotalMarks = (subjectName) => {
-  const totalQuestions = calculateTotalQuestions(subjectName);
-  return totalQuestions * 4; // 4 marks per question for each subject
-};
-
+  const calculateTotalMarks = (subjectName) => {
+    const totalQuestions = calculateTotalQuestions(subjectName);
+    return totalQuestions * 4; // 4 marks per question for each subject
+  };
 
   // Save updated test name to localStorage
   const handleSaveTestName = () => {
@@ -126,18 +123,20 @@ const calculateTotalMarks = (subjectName) => {
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_BASE_URL}/createtest/fetch-questions`,
         {
-          selectedSubjects: Object.keys(selectedChapters),
-          selectedChapters: selectedChapters,
+          selectedSubjects: Object.keys(selectedChapters), // Use subjects as keys
+          selectedChapters: selectedChapters, // Pass selected chapters object
         }
       );
 
       if (response.status === 200) {
+        // Save the questions to localStorage for use in TestInterface
         localStorage.setItem(
           "testQuestions",
           JSON.stringify(response.data.questions)
         );
-        router.push("/testinterfaceCT");
 
+        // Redirect to the Test Interface page
+        router.push("/testinterface");
       } else {
         console.error("Error fetching questions: ", response.data.error);
         alert("Error generating test. Please try again.");
@@ -248,22 +247,19 @@ const calculateTotalMarks = (subjectName) => {
               <div className="flex items-center gap-3">
                 <div className="w-full  px-3 py-2 text-white break-words">
                   {testName}
-                  
-                  <div className="flex justify-end items-end gap-2">
-                    
-                <button
-                  onClick={() => {
-                    setNewTestName(testName);
-                    setIsEditingTestName(true);
-                  }}
-                  className=" px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-all "
-                >
-                  Edit
-                </button>
-                  </div>
 
+                  <div className="flex justify-end items-end gap-2">
+                    <button
+                      onClick={() => {
+                        setNewTestName(testName);
+                        setIsEditingTestName(true);
+                      }}
+                      className=" px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-all "
+                    >
+                      Edit
+                    </button>
+                  </div>
                 </div>
-                
               </div>
             </div>
           )}
@@ -340,32 +336,34 @@ const calculateTotalMarks = (subjectName) => {
               {activeSubject && selectedChapters[activeSubject] && (
                 <div className=" w-full flex flex-col  gap-2">
                   {selectedChapters[activeSubject]
-                  .filter((chapter) => chapter.selected) // Filter only selected chapters
-                  .map((chapter) => (
-                    <div
-                      key={chapter.id}
-                      className=" flex items-center justify-between p-2 bg-gradient-to-r from-[#54ADD3] to-[#3184A6] rounded-md"
-                    >
-                      {/* Chapter Name */}
-                      <span className="text-white text-xs md:text-sm ">{chapter.name}</span>
+                    .filter((chapter) => chapter.selected) // Filter only selected chapters
+                    .map((chapter) => (
+                      <div
+                        key={chapter.id}
+                        className=" flex items-center justify-between p-2 bg-gradient-to-r from-[#54ADD3] to-[#3184A6] rounded-md"
+                      >
+                        {/* Chapter Name */}
+                        <span className="text-white text-xs md:text-sm ">
+                          {chapter.name}
+                        </span>
 
-                      {/* Input Field for Number of Questions */}
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="number"
-                          value={chapter.numQuestions || ""}
-                          onChange={(e) =>
-                            handleQuestionInputChange(
-                              activeSubject,
-                              chapter.id,
-                              e.target.value
-                            )
-                          }
-                          className="w-5 md:w-9 h-5 md:h-9 mx-[4px] text-center text-xs md:text-sm "
-                        />
+                        {/* Input Field for Number of Questions */}
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            value={chapter.numQuestions || ""}
+                            onChange={(e) =>
+                              handleQuestionInputChange(
+                                activeSubject,
+                                chapter.id,
+                                e.target.value
+                              )
+                            }
+                            className="w-5 md:w-9 h-5 md:h-9 mx-[4px] text-center text-xs md:text-sm "
+                          />
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
                 </div>
               )}
             </div>
@@ -402,40 +400,37 @@ const calculateTotalMarks = (subjectName) => {
           )}
 
           {/* Total Marks Section */}
-{selectedSection === "totalMarks" && (
-  <div>
-    <div className="flex flex-col gap-4">
-      {selectedSubjects
-        .filter((subject) => subject.selected) // Only show selected subjects
-        .map((subject, index) => (
-          <div key={index} className="flex flex-col">
-            {/* Subject Card */}
-            <div className="bg-gradient-to-r from-[#3184A6] to-[#54ADD3] rounded-lg shadow-lg p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3 text-white font-bold text-lg">
-                {subject.name === "Physics" && "⚛️"}
-                {subject.name === "Chemistry" && "🧪"}
-                {subject.name === "Botany" && "🌿"}
-                {subject.name === "Zoology" && "🦓"}
-                <div>{subject.name}</div>
+          {selectedSection === "totalMarks" && (
+            <div>
+              <div className="flex flex-col gap-4">
+                {selectedSubjects
+                  .filter((subject) => subject.selected) // Only show selected subjects
+                  .map((subject, index) => (
+                    <div key={index} className="flex flex-col">
+                      {/* Subject Card */}
+                      <div className="bg-gradient-to-r from-[#3184A6] to-[#54ADD3] rounded-lg shadow-lg p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3 text-white font-bold text-lg">
+                          {subject.name === "Physics" && "⚛️"}
+                          {subject.name === "Chemistry" && "🧪"}
+                          {subject.name === "Botany" && "🌿"}
+                          {subject.name === "Zoology" && "🦓"}
+                          <div>{subject.name}</div>
+                        </div>
+                      </div>
+
+                      {/* Marks Section for each subject */}
+                      <div className="bg-gradient-to-r from-[#54ADD3] to-[#3184A6] rounded-lg shadow-lg  p-3 text-start">
+                        <span className="text-white text-lg font-bold">
+                          {calculateTotalMarks(subject.name)} Marks
+                        </span>
+                      </div>
+                    </div>
+                  ))}
               </div>
             </div>
-
-            {/* Marks Section for each subject */}
-            <div className="bg-gradient-to-r from-[#54ADD3] to-[#3184A6] rounded-lg shadow-lg  p-3 text-start">
-              <span className="text-white text-lg font-bold">
-                {calculateTotalMarks(subject.name)} Marks
-              </span>
-            </div>
-          </div>
-        ))}
-    </div>
-  </div>
-)}
-
-
+          )}
         </div>
       </div>
-
 
       {/* Popup for Editing Test Name */}
       {isEditingTestName && (

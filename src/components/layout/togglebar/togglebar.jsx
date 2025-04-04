@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -55,7 +55,7 @@ const ToggleBar = () => {
           {/* Profile Picture */}
           <div className="w-8 h-8 rounded-full overflow-hidden">
             <img
-              src="/profile.jpg"
+              src="/profile.png"
               alt="Profile"
               className="w-full h-full object-cover"
             />
@@ -96,7 +96,7 @@ const ToggleBar = () => {
           <div className="flex flex-col items-center py-4 border-b">
             <div className="w-16 h-16 rounded-full overflow-hidden mb-2">
               <img
-                src="/profile.jpg"
+                src="/profile.png"
                 alt="Profile"
                 className="w-full h-full object-cover"
               />
@@ -110,10 +110,14 @@ const ToggleBar = () => {
             {[
               { name: "Home", path: "/", icon: <FiHome /> },
               { name: "Goal Set Up", path: "/goalsetup", icon: <FiTarget /> },
-             
+
               { name: "Result", path: "/result", icon: <FiBarChart /> },
               { name: "Analytics", path: "/analytics", icon: <MdAnalytics /> }, // New Analytics Entry
-              { name: "Leaderboard", path: "/leaderboard", icon: <MdLeaderboard /> },
+              {
+                name: "Leaderboard",
+                path: "/leaderboard",
+                icon: <MdLeaderboard />,
+              },
               { name: "Colleges", path: "/colleges", icon: <FiBook /> },
               { name: "Logout", path: "/login", icon: <FiLogOut /> },
             ].map((item) => (

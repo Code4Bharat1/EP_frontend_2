@@ -37,7 +37,7 @@ const Sidebar = ({ isOpen }) => {
           <li className="hover:text-gray-200">
             <Link href="/goalsetup" className="flex items-center space-x-3">
               <FaBullseye className="text-lg" />
-              <span className="text-md">Goal Set up</span>
+              <span className="text-md">Exam Plan</span>
             </Link>
           </li>
           <li className="hover:text-gray-200">

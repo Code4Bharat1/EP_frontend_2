@@ -74,6 +74,22 @@ const NeetPrep = () => {
     visible: { opacity: 1, y: 0 },
   };
 
+  const handleStartTest = (subject, chapter) => {
+    // Calculate the number of allocated questions for the chapter
+    const allocatedQuestions = subjectUnits?.[subject]?.find(
+      (unit) => unit.chapter === chapter
+    )?.expected_questions;
+    if (allocatedQuestions) {
+      router.push(
+        `/testinterfaceplan?chapter=${encodeURIComponent(
+          chapter
+        )}&allocatedQuestions=${allocatedQuestions}&subject=${subject}`
+      );
+    } else {
+      setError("No data found for the selected chapter.");
+    }
+  };
+
   if (loading) {
     return <div className="text-center mt-10">Loading your plan...</div>;
   }
@@ -159,13 +175,7 @@ const NeetPrep = () => {
                       </div>
                       <button
                         className="px-4 py-1.5 text-sm rounded-md bg-[#49A6CF] text-white hover:bg-[#3c91b3] transition"
-                        onClick={() =>
-                          router.push(
-                            `/testinterface?chapter=${encodeURIComponent(
-                              unit.chapter
-                            )}`
-                          )
-                        }
+                        onClick={() => handleStartTest(subject, unit.chapter)}
                       >
                         Start Test
                       </button>

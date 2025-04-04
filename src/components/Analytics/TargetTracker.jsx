@@ -46,21 +46,35 @@ const TargetTrackerCard = ({ selectedFilter }) => {
           const graphImage = isLow ? "/redgraph.png" : "/greengraph.png";
 
           return (
-            <div key={index} className="flex justify-between items-center py-3 border-b last:border-0">
+            <div
+              key={index}
+              className="flex justify-between items-center py-3 border-b last:border-0"
+            >
               {/* Left Side: Title & Date */}
               <div>
-                <h3 className="text-md font-semibold text-gray-800">{item.title}</h3>
+                <h3 className="text-md font-semibold text-gray-800">
+                  {item.title}
+                </h3>
                 <p className="text-sm text-gray-500">{item.date}</p>
               </div>
 
               {/* Middle: Graph */}
               <div>
-                <Image src={graphImage} alt="Loading Graph..." width={50} height={30} />
+                <Image
+                  src={graphImage}
+                  alt="Loading Graph..."
+                  width={50}
+                  height={30}
+                />
               </div>
 
               {/* Right Side: Score & Arrow */}
               <div className="flex items-center gap-1">
-                <span className={`text-md font-semibold ${isLow ? "text-red-500" : "text-green-500"}`}>
+                <span
+                  className={`text-md font-semibold ${
+                    isLow ? "text-red-500" : "text-green-500"
+                  }`}
+                >
                   {item.score}/10
                 </span>
                 {isLow ? (

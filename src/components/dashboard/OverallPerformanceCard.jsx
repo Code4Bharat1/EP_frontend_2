@@ -2,7 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { TrendingUp, TrendingDown } from "lucide-react";
-import { CartesianGrid, Line, LineChart, XAxis } from "recharts";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  XAxis,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import axios from "axios";
 
 import {
   Card,
@@ -18,51 +26,117 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 
-// Dummy performance data for different timeframes
-const performanceData = {
-  "This Year": {
-    physics: 85,
-    chemistry: 90,
-    biology: 87,
-    prevPerformance: 88,
-    labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
-  },
-  "This Month": {
-    physics: 80,
-    chemistry: 85,
-    biology: 83,
-    prevPerformance: 84,
-    labels: ["Week 1", "Week 2", "Week 3", "Week 4"],
-  },
-  "This Week": {
-    physics: 100,
-    chemistry: 100,
-    biology: 78,
-    prevPerformance: 79,
-    labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-  },
-};
-
 const OverallPerformanceCard = ({ selectedFilter = "This Year" }) => {
-  const [data, setData] = useState(performanceData[selectedFilter] || {});
+  const [data, setData] = useState([]);
   const [avgPerformance, setAvgPerformance] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (performanceData[selectedFilter]) {
-      setLoading(true);
-      setData(performanceData[selectedFilter]); // Update data dynamically
-      setLoading(false);
-    }
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const token = localStorage.getItem("authToken");
+        const response = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_BASE_URL}/dashboard/testcount`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        const rawData = response.data;
+        const currentDate = new Date();
+
+        const isSameYear = (date) =>
+          new Date(date).getFullYear() === currentDate.getFullYear();
+        const isSameMonth = (date) =>
+          isSameYear(date) &&
+          new Date(date).getMonth() === currentDate.getMonth();
+        const isSameWeek = (date) => {
+          const testDate = new Date(date);
+          const weekStart = new Date(currentDate);
+          weekStart.setDate(currentDate.getDate() - currentDate.getDay());
+          return testDate >= weekStart;
+        };
+
+        let labels = [];
+        let performanceData = [];
+
+        if (selectedFilter === "This Year") {
+          labels = [
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "May",
+            "Jun",
+            "Jul",
+            "Aug",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dec",
+          ];
+          performanceData = labels.map((month, index) => {
+            const count = Object.values(rawData).reduce((total, test) => {
+              const testDate = new Date(test.updatedAt);
+              return (
+                total +
+                (isSameYear(test.updatedAt) && testDate.getMonth() === index
+                  ? 1
+                  : 0)
+              );
+            }, 0);
+            return { label: month, performance: count };
+          });
+        } else if (selectedFilter === "This Month") {
+          labels = ["Week 1", "Week 2", "Week 3", "Week 4"];
+          performanceData = labels.map((week, index) => {
+            const count = Object.values(rawData).reduce((total, test) => {
+              const testDate = new Date(test.updatedAt);
+              const weekNumber = Math.floor(testDate.getDate() / 7);
+              return (
+                total +
+                (isSameMonth(test.updatedAt) && weekNumber === index ? 1 : 0)
+              );
+            }, 0);
+            return { label: week, performance: count };
+          });
+        } else if (selectedFilter === "This Week") {
+          labels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+          performanceData = labels.map((day, index) => {
+            const count = Object.values(rawData).reduce((total, test) => {
+              const testDate = new Date(test.updatedAt);
+              return (
+                total +
+                (isSameWeek(test.updatedAt) && testDate.getDay() === index
+                  ? 1
+                  : 0)
+              );
+            }, 0);
+            return { label: day, performance: count };
+          });
+        }
+
+        // Calculate average performance
+        const totalPerformance = performanceData.reduce(
+          (sum, item) => sum + item.performance,
+          0
+        );
+        const avgPerformance = totalPerformance / performanceData.length || 0;
+        setAvgPerformance(avgPerformance);
+        setData(performanceData);
+        setLoading(false);
+      } catch (err) {
+        setError("Failed to load performance data");
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, [selectedFilter]);
-
-  useEffect(() => {
-    if (data && data.physics !== undefined) {
-      setAvgPerformance(
-        Math.round((data.physics + data.chemistry + data.biology) / 3)
-      );
-    }
-  }, [data]);
 
   if (loading) {
     return (
@@ -74,19 +148,8 @@ const OverallPerformanceCard = ({ selectedFilter = "This Year" }) => {
     );
   }
 
-  // Check performance trend
-  const isImproving = avgPerformance > (data?.prevPerformance || 0);
-  const trendPercentage = (
-    ((avgPerformance - (data?.prevPerformance || 1)) / (data?.prevPerformance || 1)) *
-    100
-  ).toFixed(1);
-
-  // Convert data for Recharts
-  const chartData =
-    data?.labels?.map((label, index) => ({
-      label,
-      performance: avgPerformance + (index % 2 === 0 ? -2 : 3),
-    })) || [];
+  const isImproving = avgPerformance > 50; // Change logic as needed
+  const trendPercentage = ((avgPerformance / 100) * 100).toFixed(1);
 
   return (
     <Card>
@@ -95,33 +158,20 @@ const OverallPerformanceCard = ({ selectedFilter = "This Year" }) => {
         <CardDescription>Performance trend over time</CardDescription>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={{ theme: "light", color: "blue" }}> 
-          <LineChart
-            accessibilityLayer
-            data={chartData}
-            margin={{ left: 12, right: 12 }}
-          >
-            <CartesianGrid vertical={false} />
-            <XAxis
-              dataKey="label"
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-            />
-            <ChartTooltip
-              config={{ theme: "light", color: "blue" }} 
-              cursor={false}
-              content={<ChartTooltipContent hideLabel />}
-            />
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={data} margin={{ left: 12, right: 12 }}>
+            <CartesianGrid vertical={false} strokeDasharray="3 3" />
+            <XAxis dataKey="label" />
+            <Tooltip />
             <Line
+              type="monotone"
               dataKey="performance"
-              type="linear"
               stroke={isImproving ? "green" : "red"}
               strokeWidth={2}
-              dot={false}
+              dot={{ r: 3 }}
             />
           </LineChart>
-        </ChartContainer>
+        </ResponsiveContainer>
       </CardContent>
       <CardFooter className="flex-col items-start gap-2 text-sm">
         <div
@@ -129,8 +179,13 @@ const OverallPerformanceCard = ({ selectedFilter = "This Year" }) => {
             isImproving ? "text-green-500" : "text-red-500"
           }`}
         >
-          {isImproving ? "Performance up" : "Performance down"} by {trendPercentage}%
-          {isImproving ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+          {isImproving ? "Performance up" : "Performance down"} by{" "}
+          {trendPercentage}%
+          {isImproving ? (
+            <TrendingUp className="h-4 w-4" />
+          ) : (
+            <TrendingDown className="h-4 w-4" />
+          )}
         </div>
         <div className="leading-none text-muted-foreground">
           Showing performance trend for <strong>{selectedFilter}</strong>

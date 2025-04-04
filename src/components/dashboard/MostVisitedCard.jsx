@@ -2,45 +2,144 @@
 
 import { useEffect, useState } from "react";
 import { PieChart, Pie, Cell, Tooltip } from "recharts";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-
-// Sample Data for Different Timeframes
-const performanceData = {
-  "This Year": [
-    { name: "Practice Test Taken", value: 81.94, color: "#1E66F5" }, // Blue
-    { name: "Speed", value: 81.94, color: "#FFA500" }, // Orange
-    { name: "Pending Task", value: 81.94, color: "#FF3B30" }, // Red
-  ],
-  "This Month": [
-    { name: "Practice Test Taken", value: 70.5, color: "#1E66F5" },
-    { name: "Speed", value: 45.3, color: "#FFA500" },
-    { name: "Pending Task", value: 30.2, color: "#FF3B30" },
-  ],
-  "This Week": [
-    { name: "Practice Test Taken", value: 85.1, color: "#1E66F5" },
-    { name: "Speed", value: 60.7, color: "#FFA500" },
-    { name: "Pending Task", value: 40.8, color: "#FF3B30" },
-  ],
-};
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import axios from "axios";
 
 const MostVisitedPageCard = ({ selectedFilter }) => {
-  const [data, setData] = useState(performanceData[selectedFilter]);
+  const [data, setData] = useState([]);
+  const [graphData, setGraphData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    setData(performanceData[selectedFilter]);
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem("authToken");
+        const response = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_BASE_URL}/dashboard/testcount`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        const rawData = response.data;
+
+        // Filter the data based on the selected timeframe
+        const currentDate = new Date();
+        const isSameYear = (date) =>
+          new Date(date).getFullYear() === currentDate.getFullYear();
+        const isSameMonth = (date) =>
+          isSameYear(date) &&
+          new Date(date).getMonth() === currentDate.getMonth();
+        const isSameWeek = (date) => {
+          const testDate = new Date(date);
+          const weekStart = new Date(currentDate);
+          weekStart.setDate(currentDate.getDate() - currentDate.getDay());
+          return testDate >= weekStart;
+        };
+
+        const filterByDate = (tests, filterFunc) => {
+          return tests && tests.updatedAt && filterFunc(tests.updatedAt);
+        };
+
+        let filteredData = [];
+        switch (selectedFilter) {
+          case "This Year":
+            filteredData = [
+              rawData.fullTestResults,
+              rawData.recommendedTests,
+              rawData.meTests,
+            ].filter((test) => filterByDate(test, isSameYear));
+            break;
+          case "This Month":
+            filteredData = [
+              rawData.fullTestResults,
+              rawData.recommendedTests,
+              rawData.meTests,
+            ].filter((test) => filterByDate(test, isSameMonth));
+            break;
+          case "This Week":
+            filteredData = [
+              rawData.fullTestResults,
+              rawData.recommendedTests,
+              rawData.meTests,
+            ].filter((test) => filterByDate(test, isSameWeek));
+            break;
+          default:
+            filteredData = [
+              rawData.fullTestResults,
+              rawData.recommendedTests,
+              rawData.meTests,
+            ];
+        }
+
+        const totalTests = filteredData.reduce(
+          (acc, test) => acc + test.totalTests,
+          0
+        );
+
+        // Prepare the data for the graph and table
+        const formattedData = filteredData.map((test) => ({
+          name: test.tableName,
+          value: ((test.totalTests / totalTests) * 100).toFixed(2), // Total Tests as percentage
+          color:
+            test.tableName === "FullTestResults"
+              ? "#1E66F5"
+              : test.tableName === "RecommendedTest"
+              ? "#FFA500"
+              : "#FF3B30",
+        }));
+
+        setData(formattedData);
+
+        // Prepare the graph data (showing total attempted percentage)
+        const graphFormattedData = filteredData.map((test) => ({
+          name: test.tableName,
+          value: test.totalTests,
+          color:
+            test.tableName === "FullTestResults"
+              ? "#1E66F5"
+              : test.tableName === "RecommendedTest"
+              ? "#FFA500"
+              : "#FF3B30",
+        }));
+
+        setGraphData(graphFormattedData);
+        setLoading(false);
+      } catch (err) {
+        setError("Failed to load test statistics");
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, [selectedFilter]);
+
+  if (loading)
+    return <div className="text-center text-blue-500">Loading...</div>;
+  if (error) return <div className="text-center text-red-500">{error}</div>;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Most Visited Page</CardTitle>
-        <CardDescription>Overview of most visited sections</CardDescription>
+        <CardTitle>Test Statistics</CardTitle>
+        <CardDescription>
+          Overview of test data based on selection
+        </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col items-center">
         {/* Chart */}
         <PieChart width={200} height={200}>
           <Pie
-            data={data}
+            data={graphData}
             cx="50%"
             cy="50%"
             innerRadius={50}
@@ -48,7 +147,7 @@ const MostVisitedPageCard = ({ selectedFilter }) => {
             dataKey="value"
             paddingAngle={2}
           >
-            {data.map((entry, index) => (
+            {graphData.map((entry, index) => (
               <Cell key={`cell-${index}`} fill={entry.color} />
             ))}
           </Pie>
@@ -58,8 +157,8 @@ const MostVisitedPageCard = ({ selectedFilter }) => {
         {/* Data Table */}
         <div className="w-full mt-4">
           <div className="flex justify-between border-b pb-2 text-gray-500 text-sm">
-            <span>PAGE NAME</span>
-            <span>RATE</span>
+            <span>TEST NAME</span>
+            <span>TOTAL TESTS (%)</span>
           </div>
           {data.map((item, index) => (
             <div key={index} className="flex justify-between py-2">

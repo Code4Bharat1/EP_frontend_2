@@ -2,69 +2,188 @@
 
 import React, { useEffect, useState } from "react";
 import { FaArrowUp, FaArrowDown } from "react-icons/fa";
-import { LineChart, Line, XAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-
-// Dummy accuracy data with high-low variations for different filters
-const accuracyData = {
-    "This Year": {
-      physics: [85, 92, 45, 88, 78, 63, 89], // Mixed high & low values
-      chemistry: [90, 40, 55, 91, 48, 79, 92], // Some below 50, some above 75
-      biology: [87, 60, 88, 39, 86, 75, 88], // More variance in performance
-      prevAccuracy: 72,
-      labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
-    },
-    "This Month": {
-      physics: [80, 42, 78, 84, 35, 91, 83], // Low and high mix
-      chemistry: [85, 43, 30, 76, 55, 84, 67], // Random mix with very low values
-      biology: [83, 50, 82, 45, 78, 86, 64], // Alternating highs and lows
-      prevAccuracy: 68,
-      labels: ["Week 1", "Week 2", "Week 3", "Week 4"],
-    },
-    "This Week": {
-      physics: [75, 78, 52, 37, 80, 46, 59], // Low mid-range scores
-      chemistry: [40, 27, 75, 62, 38, 79, 81], // Some subjects doing worse than others
-      biology: [78, 33, 47, 80, 41, 56, 69], // Strong fluctuations
-      prevAccuracy: 60,
-      labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-    },
-  };
-  
+import {
+  LineChart,
+  Line,
+  XAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import axios from "axios";
 
 const AccuracyCard = ({ selectedFilter }) => {
-  // State for selected dataset
-  const [data, setData] = useState(accuracyData["This Year"]);
+  const [data, setData] = useState([]);
   const [avgAccuracy, setAvgAccuracy] = useState(0);
+  const [isImproving, setIsImproving] = useState(false);
+  const [trendPercentage, setTrendPercentage] = useState(0);
 
   useEffect(() => {
-    setData(accuracyData[selectedFilter]);
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem("authToken");
+        const response = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_BASE_URL}/dashboard/success`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
-    // Calculate average accuracy dynamically
-    const avg =
-      (accuracyData[selectedFilter].physics.reduce((a, b) => a + b, 0) +
-        accuracyData[selectedFilter].chemistry.reduce((a, b) => a + b, 0) +
-        accuracyData[selectedFilter].biology.reduce((a, b) => a + b, 0)) /
-      (accuracyData[selectedFilter].physics.length * 3);
-    
-    setAvgAccuracy(Math.round(avg));
+        const rawData = response.data;
+        const currentDate = new Date();
+
+        const isSameYear = (date) =>
+          new Date(date).getFullYear() === currentDate.getFullYear();
+        const isSameMonth = (date) =>
+          isSameYear(date) &&
+          new Date(date).getMonth() === currentDate.getMonth();
+        const isSameWeek = (date) => {
+          const testDate = new Date(date);
+          const weekStart = new Date(currentDate);
+          weekStart.setDate(currentDate.getDate() - currentDate.getDay());
+          return testDate >= weekStart;
+        };
+
+        let labels = [];
+        let performanceData = [];
+
+        if (selectedFilter === "This Year") {
+          labels = [
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "May",
+            "Jun",
+            "Jul",
+            "Aug",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dec",
+          ];
+          performanceData = labels.map((month, index) => {
+            const filtered = rawData.filter((item) => {
+              const testDate = new Date(item.updatedAt);
+              return (
+                isSameYear(item.updatedAt) && testDate.getMonth() === index
+              );
+            });
+            const totalPhysics = filtered.reduce(
+              (sum, item) => sum + (item.Physics || 0),
+              0
+            );
+            const totalChemistry = filtered.reduce(
+              (sum, item) => sum + (item.Chemistry || 0),
+              0
+            );
+            const totalBiology = filtered.reduce(
+              (sum, item) => sum + (item.Biology || 0),
+              0
+            );
+            return {
+              label: month,
+              physics: totalPhysics,
+              chemistry: totalChemistry,
+              biology: totalBiology,
+            };
+          });
+        } else if (selectedFilter === "This Month") {
+          labels = ["Week 1", "Week 2", "Week 3", "Week 4"];
+          performanceData = labels.map((week, index) => {
+            const filtered = rawData.filter((item) => {
+              const testDate = new Date(item.updatedAt);
+              const weekNumber = Math.floor(testDate.getDate() / 7);
+              return isSameMonth(item.updatedAt) && weekNumber === index;
+            });
+            const totalPhysics = filtered.reduce(
+              (sum, item) => sum + (item.Physics || 0),
+              0
+            );
+            const totalChemistry = filtered.reduce(
+              (sum, item) => sum + (item.Chemistry || 0),
+              0
+            );
+            const totalBiology = filtered.reduce(
+              (sum, item) => sum + (item.Biology || 0),
+              0
+            );
+            return {
+              label: week,
+              physics: totalPhysics,
+              chemistry: totalChemistry,
+              biology: totalBiology,
+            };
+          });
+        } else if (selectedFilter === "This Week") {
+          labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+          performanceData = labels.map((day, index) => {
+            const filtered = rawData.filter((item) => {
+              const testDate = new Date(item.updatedAt);
+              return isSameWeek(item.updatedAt) && testDate.getDay() === index;
+            });
+            const totalPhysics = filtered.reduce(
+              (sum, item) => sum + (item.Physics || 0),
+              0
+            );
+            const totalChemistry = filtered.reduce(
+              (sum, item) => sum + (item.Chemistry || 0),
+              0
+            );
+            const totalBiology = filtered.reduce(
+              (sum, item) => sum + (item.Biology || 0),
+              0
+            );
+            return {
+              label: day,
+              physics: totalPhysics,
+              chemistry: totalChemistry,
+              biology: totalBiology,
+            };
+          });
+        }
+
+        setData(performanceData);
+
+        // Calculate average accuracy
+        const avgAccuracy = Math.min(
+          Math.round(
+            performanceData.reduce(
+              (acc, item) => acc + item.physics + item.chemistry + item.biology,
+              0
+            ) /
+              (performanceData.length * 3)
+          ),
+          100
+        );
+
+        // Trend calculation
+        const prevAccuracy = avgAccuracy > 0 ? avgAccuracy - 5 : avgAccuracy; // Previous accuracy as 5 less for simulation
+        const isTrendIncreasing = avgAccuracy > prevAccuracy;
+        const trendPercent = (
+          ((avgAccuracy - prevAccuracy) / (prevAccuracy || 1)) *
+          100
+        ).toFixed(1);
+
+        setAvgAccuracy(avgAccuracy);
+        setIsImproving(isTrendIncreasing);
+        setTrendPercentage(trendPercent);
+      } catch (err) {
+        console.error("Error fetching accuracy data:", err);
+      }
+    };
+
+    fetchData();
   }, [selectedFilter]);
 
-  // Calculate trend direction (increase/decrease)
-  const isImproving = avgAccuracy > data.prevAccuracy;
+  // Determine trend icon and color
   const trendColor = isImproving ? "text-green-500" : "text-red-500";
   const TrendIcon = isImproving ? FaArrowUp : FaArrowDown;
-  const trendPercentage = (((avgAccuracy - data.prevAccuracy) / data.prevAccuracy) * 100).toFixed(1);
-
-  // Generate chart data
-  const chartData = data.labels.map((label, index) => ({
-    label,
-    physics: data.physics[index],
-    chemistry: data.chemistry[index],
-    biology: data.biology[index],
-  }));
 
   return (
     <div className="w-full max-w-sm p-5 bg-white rounded-2xl shadow-md">
-      {/* Header */}
       <div className="flex justify-between items-center">
         <h3 className="text-sm font-bold text-gray-500">ACCURACY</h3>
         <span className={`flex items-center text-sm font-medium ${trendColor}`}>
@@ -73,45 +192,34 @@ const AccuracyCard = ({ selectedFilter }) => {
         </span>
       </div>
 
-      {/* Accuracy Display */}
-      <h2 className="text-2xl font-bold mt-2">{avgAccuracy}</h2>
+      <h2 className="text-2xl font-bold mt-2">{avgAccuracy}%</h2>
 
-      {/* Line Chart */}
       <div className="w-full h-32 mt-4">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData}>
+          <LineChart data={data}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+            <XAxis dataKey="label" />
             <Tooltip />
-
-            {/* Physics - Red Line */}
             <Line
               type="monotone"
               dataKey="physics"
               stroke="#0E5FD9"
               strokeWidth={3}
               dot={false}
-              opacity={0.7}
             />
-
-            {/* Chemistry - Yellow Line */}
             <Line
               type="monotone"
               dataKey="chemistry"
               stroke="#0FAF62"
               strokeWidth={3}
               dot={false}
-              opacity={0.7}
             />
-
-            {/* Biology - Green Line */}
             <Line
               type="monotone"
               dataKey="biology"
               stroke="#E84646"
               strokeWidth={3}
               dot={false}
-              opacity={0.7}
             />
           </LineChart>
         </ResponsiveContainer>

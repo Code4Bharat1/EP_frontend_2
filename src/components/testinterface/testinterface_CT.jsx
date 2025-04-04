@@ -1,8 +1,8 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { FaFlask, FaAtom, FaDna } from "react-icons/fa";
+import axios from "axios";
 import { TfiTimer } from "react-icons/tfi";
+import { FaFlask, FaAtom, FaDna } from "react-icons/fa";
 
 const subjects = [
   { name: "Physics", icon: <FaAtom className="text-lg text-blue-500" /> },
@@ -11,45 +11,83 @@ const subjects = [
 ];
 
 const TestInterface = () => {
-  const [questionsData, setQuestionsData] = useState({}); // stores all questions per subject
+  const [selectedSubjects, setSelectedSubjects] = useState([]);
+  const [questionsData, setQuestionsData] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [currentSubject, setCurrentSubject] = useState("Physics");
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState({});
   const [visitedQuestions, setVisitedQuestions] = useState({});
   const [markedForReview, setMarkedForReview] = useState({});
-  const [timer, setTimer] = useState(10800); // 3 hours in seconds
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const router = useRouter();
+  const [timer, setTimer] = useState(10800);
+  const [lastIndex, setLastIndex] = useState(0);
 
-  // Fetching questions from localStorage
+  const selectedChapters =
+    JSON.parse(localStorage.getItem("selectedChapters")) || {};
+  const numQuestions = selectedChapters[currentSubject]
+    ? Object.values(selectedChapters[currentSubject]).reduce(
+        (total, chapter) => total + (Number(chapter.numQuestions) || 0),
+        0
+      )
+    : 0;
+
   useEffect(() => {
-    const storedQuestions = JSON.parse(localStorage.getItem("testQuestions"));
-    if (storedQuestions && storedQuestions.length > 0) {
-      // Organize questions by subjects and chapters
-      const subjectWiseQuestions = {
-        Physics: [],
-        Chemistry: [],
-        Biology: [],
-      };
+    const storedSubjects = JSON.parse(
+      localStorage.getItem("selectedSubjects") || "[]"
+    );
+    setSelectedSubjects(storedSubjects);
 
-      storedQuestions.forEach((item) => {
-        const subject = item.subject;
-        subjectWiseQuestions[subject]?.push({
-          id: item.question.id,
-          question: item.question.question_text,
-          options: item.options.map((opt) => opt.option_text),
+    const fetchQuestions = async () => {
+      try {
+        const response = await axios.post(
+          `${process.env.NEXT_PUBLIC_API_BASE_URL}/createtest/fetch-questions`,
+          {
+            selectedSubjects: storedSubjects,
+            selectedChapters,
+            numQuestions,
+          }
+        );
+        const data = response.data;
+
+        const subjectWiseQuestions = {
+          Physics: [],
+          Chemistry: [],
+          Biology: [],
+        };
+
+        data.questions.forEach((item) => {
+          const subject = item.question.subject;
+          subjectWiseQuestions[subject]?.push({
+            id: item.question.id,
+            question: item.question.question_text,
+            options: item.options.map((opt) => opt.option_text),
+            correctAnswer: item.correctAnswer
+              ? item.correctAnswer.option_text
+              : null,
+          });
         });
-      });
+        setQuestionsData(subjectWiseQuestions);
+        setLoading(false);
 
-      setQuestionsData(subjectWiseQuestions);
-      setLoading(false);
-    } else {
-      alert("No test questions found. Please generate the test again.");
-      router.push("/preview");
-    }
+        // Store the data (chapterId, chapterName, questionIds) in localStorage
+        const questionInfo = data.questions.map((item) => ({
+          chapterId: item.question.chapterId,
+          chapterName: item.question.chapter,
+          questionIds: item.question.id,
+        }));
 
-    // Start the countdown timer
+        localStorage.setItem("questionInfo", JSON.stringify(questionInfo));
+      } catch (err) {
+        console.error("Error fetching questions:", err);
+        setError("Failed to load questions");
+        setLoading(false);
+      }
+    };
+    fetchQuestions();
+  }, [numQuestions]);
+
+  useEffect(() => {
     const countdown = setInterval(() => {
       setTimer((prev) => {
         if (prev <= 0) {
@@ -64,171 +102,240 @@ const TestInterface = () => {
     return () => clearInterval(countdown);
   }, []);
 
+  //useEffect for fixing the numQuestion bug
+  useEffect(() => {
+    if (numQuestions > 0) {
+      setLastIndex(numQuestions);
+    }
+  }, [numQuestions]);
+
   const formattedTime = {
     hours: Math.floor(timer / 3600),
     minutes: Math.floor((timer % 3600) / 60),
     seconds: timer % 60,
   };
 
-  const handleOptionClick = (questionId, optionId) => {
-    setAnswers({
-      ...answers,
-      [`${currentSubject}-${questionId}`]: optionId,
-    });
+  const handleOptionClick = (index) => {
+    const questionData = questionsData[currentSubject][currentQuestion];
+    const selectedAnswer = questionData.options[index];
+    const correctAnswer = questionData.correctAnswer;
+    const isCorrect = selectedAnswer === correctAnswer;
+
+    // Find the chapter name by matching the question_id
+    const questionId = questionData.id;
+    const questionInfo = JSON.parse(localStorage.getItem("questionInfo")) || [];
+    const chapterInfo = questionInfo.find(
+      (item) => item.questionIds === questionId
+    );
+
+    // If chapterInfo exists, add the chapter name to the answer data
+    const chapterName = chapterInfo
+      ? chapterInfo.chapterName
+      : "Unknown Chapter";
+
+    const answerData = {
+      subject: currentSubject,
+      question: questionData.question,
+      question_id: questionData.id,
+      chapterName, // Add chapter name here
+      selectedAnswer,
+      isCorrect,
+      correctAnswer,
+    };
+
+    let savedAnswers = JSON.parse(localStorage.getItem("testAnswers")) || [];
+    const questionIndex = savedAnswers.findIndex(
+      (answer) => answer.question_id === questionData.id // Use question_id to identify the question
+    );
+
+    if (questionIndex >= 0) {
+      // If the question is already in the testAnswers, update it
+      savedAnswers[questionIndex] = answerData;
+    } else {
+      // If the question is not in the testAnswers, add it
+      savedAnswers.push(answerData);
+    }
+
+    // Save the updated testAnswers in localStorage
+    localStorage.setItem("testAnswers", JSON.stringify(savedAnswers));
+
+    // Update state for answers and visited questions
+    setAnswers({ ...answers, [`${currentSubject}-${currentQuestion}`]: index });
     setVisitedQuestions({
       ...visitedQuestions,
-      [`${currentSubject}-${questionId}`]: true,
+      [`${currentSubject}-${currentQuestion}`]: true,
     });
   };
 
   const handleNavigation = (direction) => {
-    const totalQuestions = questionsData[currentSubject]?.length || 0;
-    if (direction === "next" && currentQuestionIndex < totalQuestions - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-    } else if (direction === "prev" && currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex - 1);
+    const totalQuestions = lastIndex || 0;
+    console.log(totalQuestions);
+    if (direction === "next" && currentQuestion >= totalQuestions - 1) {
+      const currentSubjectIndex = selectedSubjects.indexOf(currentSubject);
+      const nextSubjectIndex =
+        (currentSubjectIndex + 1) % selectedSubjects.length;
+      setCurrentSubject(selectedSubjects[nextSubjectIndex]);
+      setCurrentQuestion(0);
+    } else if (direction === "prev" && currentQuestion > 0) {
+      setCurrentQuestion(currentQuestion - 1);
+    } else if (direction === "next" && currentQuestion < totalQuestions - 1) {
+      setCurrentQuestion(currentQuestion + 1);
     }
   };
 
   const handleReviewLater = () => {
-    const questionId = questionsData[currentSubject][currentQuestionIndex].id;
     setMarkedForReview({
       ...markedForReview,
-      [`${currentSubject}-${questionId}`]: true,
+      [`${currentSubject}-${currentQuestion}`]: true,
     });
     handleNavigation("next");
   };
 
   const handleClearResponse = () => {
     const updatedAnswers = { ...answers };
-    delete updatedAnswers[`${currentSubject}-${currentQuestionIndex}`];
+    delete updatedAnswers[`${currentSubject}-${currentQuestion}`];
     setAnswers(updatedAnswers);
   };
 
-  const handleSubmit = async () => {
-    const confirmSubmit = window.confirm("Confirm submit?");
-    if (!confirmSubmit) return;
+  const [startTime, setStartTime] = useState(new Date());
 
-    const authToken = localStorage.getItem("authToken");
+  const handleSubmit = async () => {
+    if (!window.confirm("Confirm submit?")) return;
+
+    const testAnswers = JSON.parse(localStorage.getItem("testAnswers")) || [];
+    const authToken =
+      localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+    const testName = localStorage.getItem("testName") || [];
+
     if (!authToken) {
-      alert("Authentication failed! Please log in again.");
+      alert("No authentication token found!");
       return;
     }
 
-    const endTime = new Date().toISOString();
-    const startTime =
-      localStorage.getItem("testStartTime") || new Date().toISOString();
-    let correctAnswers = [];
-    let wrongAnswers = [];
-    let notAttempted = [];
-    let totalMarks = 0;
+    const correctAnswers = [];
+    const wrongAnswers = [];
+    const notAttempted = [];
 
-    // Process all answers
-    Object.values(questionsData).forEach((subjectQuestions) => {
-      subjectQuestions.forEach((question) => {
-        const selectedOptionIndex = answers[`${currentSubject}-${question.id}`];
-        const selectedOption = question.options[selectedOptionIndex] || null;
-        const correctOption = question.options.find(
-          (opt) => opt === question.correctOption
-        );
-
-        const marks =
-          selectedOption === correctOption
-            ? 4
-            : selectedOption === null
-            ? 0
-            : -1;
-
-        const questionData = [
-          question.id,
-          currentSubject,
-          question.chapter,
-          selectedOption,
-          correctOption,
-          marks,
-          0,
-        ];
-
-        if (selectedOption === null) {
-          notAttempted.push([question.id, currentSubject, question.chapter]);
-        } else if (selectedOption === correctOption) {
-          correctAnswers.push(questionData);
-        } else {
-          wrongAnswers.push(questionData);
-        }
-
-        totalMarks += marks;
-      });
-    });
-
-    const testResults = {
-      correctAnswers,
-      wrongAnswers,
-      notAttempted,
-      startTime,
-      endTime,
-      total_marks: totalMarks,
+    const subjectWiseMarks = {
+      Physics: 0,
+      Chemistry: 0,
+      Biology: 0,
     };
+
+    const endTime = new Date();
+    let total_marks = 0;
+
+    // Assuming 'selectedChapters' data structure includes the chapters
+    const selectedChapters =
+      JSON.parse(localStorage.getItem("selectedChapters")) || {};
+
+    // Loop through the answers and calculate subject-wise marks
+    testAnswers.forEach((answerObj) => {
+      const { subject, question, selectedAnswer, correctAnswer } = answerObj;
+
+      const chapter = "General"; // You can refine this if you track chapters per question
+      const questionId = question; // Ideally, replace with questionId if available
+      const marks = selectedAnswer === correctAnswer ? 4 : -1; // +4 for correct, -1 for incorrect
+      const timeSpent = "N/A"; // Optional: you can integrate actual tracking
+
+      // Update the subject-wise marks
+      if (selectedAnswer === correctAnswer) {
+        subjectWiseMarks[subject] += 4; // Add 4 for correct answers
+      } else if (selectedAnswer !== null && selectedAnswer !== "") {
+        subjectWiseMarks[subject] -= 1; // Subtract 1 for incorrect answers
+      }
+
+      const answerPayload = [
+        questionId,
+        subject,
+        chapter,
+        selectedAnswer,
+        correctAnswer,
+        marks,
+        timeSpent,
+      ];
+
+      if (!selectedAnswer) {
+        notAttempted.push([questionId, subject, chapter]);
+      } else if (selectedAnswer === correctAnswer) {
+        correctAnswers.push(answerPayload);
+        total_marks += 4;
+      } else {
+        if (selectedAnswer !== "") {
+          wrongAnswers.push(answerPayload);
+        }
+      }
+    });
 
     try {
       const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/fulltest/submit`,
-        testResults,
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/createtest/submit-test`,
+        {
+          correctAnswers,
+          wrongAnswers,
+          notAttempted,
+          total_marks,
+          selectedChapters,
+          testName,
+          startTime,
+          endTime,
+          subjectWiseMarks, // Add subject-wise marks to the payload
+        },
         {
           headers: {
-            "Content-Type": "application/json",
             Authorization: `Bearer ${authToken}`,
           },
         }
       );
 
-      if (response.status === 201) {
-        alert("Test submitted successfully!");
-        window.location.href = "/result";
-      } else {
-        alert("Failed to submit test.");
-      }
+      alert(response.data.message);
+      window.location.href = "/resultCT";
     } catch (error) {
-      console.error("Error submitting test:", error);
-      alert("Error submitting test. Please try again.");
+      alert("Error submitting test!");
+      console.error(error);
     }
   };
 
   if (loading)
     return <p className="text-center text-xl">Loading questions...</p>;
-
   if (error) return <p className="text-center text-red-500">{error}</p>;
-
-  const currentQuestion = questionsData[currentSubject]?.[currentQuestionIndex];
 
   return (
     <div className="h-screen w-full bg-gray-100 flex flex-col">
-      {/* Test Header */}
+      {/* Header */}
       <div className="text-center py-4">
         <button className="bg-[#49A6CF] text-white font-bold py-2 px-6 rounded-md text-lg cursor-default">
-          {currentSubject} Created Test
+          Mock Test
         </button>
       </div>
 
       {/* Subject Tabs */}
-      <div className="flex flex-col">
+      <div className="w-full p-4 bg-transparent">
+        <h1 className="text-2xl font-bold mb-4 text-center">
+          Selected Subjects
+        </h1>
         <div className="flex justify-center gap-6">
-          {subjects.map((subject) => (
-            <button
-              key={subject.name}
-              className={`px-6 py-2 flex items-center gap-2 rounded-md border ${
-                currentSubject === subject.name
-                  ? "border-blue-500 text-blue-600 font-bold"
-                  : "border-gray-300"
-              }`}
-              onClick={() => {
-                setCurrentSubject(subject.name);
-                setCurrentQuestionIndex(0);
-              }}
-            >
-              {subject.icon} {subject.name} Section
-            </button>
-          ))}
+          {selectedSubjects.length > 0 ? (
+            selectedSubjects.map((subject, index) => (
+              <button
+                key={index}
+                className={`px-6 py-2 flex items-center gap-2 rounded-md border ${
+                  currentSubject === subject
+                    ? "border-blue-500 text-blue-600 font-bold"
+                    : "border-gray-300"
+                }`}
+                onClick={() => {
+                  setCurrentSubject(subject);
+                  setCurrentQuestion(0);
+                }}
+              >
+                {subjects.find((s) => s.name === subject)?.icon}
+                {subject} Section
+              </button>
+            ))
+          ) : (
+            <p className="text-gray-500">No subjects selected</p>
+          )}
         </div>
         <hr className="border-t border-gray-200 mt-4" />
       </div>
@@ -249,27 +356,35 @@ const TestInterface = () => {
 
             {/* Question & Options */}
             <div className="w-3/5">
-              <h3 className="text-2xl">
-                Q{currentQuestionIndex + 1}:{" "}
-                {currentQuestion?.question || "No Question Available"}
-              </h3>
-
-              <div className="mt-6">
-                {currentQuestion?.options?.map((option, index) => (
-                  <button
-                    key={index}
-                    className={`block w-2/3 text-left px-6 py-3 rounded-lg border text-lg mb-3 ${
-                      answers[`${currentSubject}-${currentQuestionIndex}`] ===
-                      index
-                        ? "bg-[#0077B6] text-white"
-                        : "bg-white"
-                    }`}
-                    onClick={() => handleOptionClick(currentQuestion.id, index)}
-                  >
-                    {option}
-                  </button>
-                ))}
-              </div>
+              {questionsData[currentSubject]?.length > 0 ? (
+                <>
+                  <h3 className="text-2xl">
+                    Q{currentQuestion + 1}.{" "}
+                    {questionsData[currentSubject][currentQuestion]?.question ||
+                      "No Question Available"}
+                  </h3>
+                  <div className="mt-6">
+                    {questionsData[currentSubject][
+                      currentQuestion
+                    ]?.options.map((option, index) => (
+                      <button
+                        key={`${currentSubject}-${currentQuestion}-${index}`}
+                        className={`block w-2/3 text-left px-6 py-3 rounded-lg border text-lg font- mb-3 ${
+                          answers[`${currentSubject}-${currentQuestion}`] ===
+                          index
+                            ? "bg-[#0077B6] text-white"
+                            : "bg-white"
+                        }`}
+                        onClick={() => handleOptionClick(index)}
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <p>Loading questions...</p>
+              )}
             </div>
           </div>
 
@@ -320,36 +435,36 @@ const TestInterface = () => {
             </div>
           </div>
 
-          {/* Boxes section */}
+          {/* Status Legend */}
           <div className="mt-6 grid grid-cols-2 gap-2">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-[#16DBCC] rounded"></div>
+              <div className="w-6 h-6 bg-[#16DBCC] rounded" />
               <span>Answered</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-[#FE5C73] rounded"></div>
+              <div className="w-6 h-6 bg-[#FE5C73] rounded" />
               <span>Unanswered</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-gray-400 rounded"></div>
+              <div className="w-6 h-6 bg-gray-400 rounded" />
               <span>Not Visited</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-[#007AFF] rounded"></div>
-              <span>Review Left</span>
+              <div className="w-6 h-6 bg-[#007AFF] rounded" />
+              <span>Review Later</span>
             </div>
           </div>
 
-          {/* Legend & Question Number Boxes */}
+          {/* Question Palette */}
           <div className="mt-6">
             <h3 className="font-bold mb-2">Legend</h3>
             <div className="grid grid-cols-5 gap-2 text-center">
-              {questionsData[currentSubject]?.map((_, index) => (
+              {Array.from({ length: numQuestions }).map((_, index) => (
                 <button
                   key={index}
                   className={`w-10 h-10 flex items-center justify-center text-white rounded transition duration-300 ${
                     currentQuestion === index
-                      ? "bg-[#003366]" // Darker shade for selected question
+                      ? "bg-[#003366]"
                       : markedForReview[`${currentSubject}-${index}`]
                       ? "bg-red-500"
                       : answers[`${currentSubject}-${index}`] !== undefined
@@ -358,7 +473,7 @@ const TestInterface = () => {
                       ? "bg-[#FE5C73]"
                       : "bg-gray-400"
                   }`}
-                  onClick={() => setCurrentQuestionIndex(index)}
+                  onClick={() => setCurrentQuestion(index)}
                 >
                   {index + 1}
                 </button>
@@ -366,7 +481,7 @@ const TestInterface = () => {
             </div>
           </div>
 
-          {/* Submit Test Button */}
+          {/* Submit Button */}
           <div className="mt-6 flex justify-center">
             <button
               onClick={handleSubmit}

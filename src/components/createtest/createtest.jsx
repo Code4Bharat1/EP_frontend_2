@@ -2,9 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import React, { useState, useEffect } from "react";
-import { FaAtom, FaFlask, FaLeaf } from "react-icons/fa"; 
+import { FaAtom, FaFlask, FaLeaf } from "react-icons/fa"; // Removed GiAnimalHide
 import Chapters from "../chapters/chapters";
-import axios from "axios";
 import Preview from "../preview/preview";
 
 const Createtest = () => {
@@ -52,43 +51,11 @@ const Createtest = () => {
     }
   };
 
-  const handleGenerateTest = async () => {
-    const selectedSubjects = JSON.parse(
-      localStorage.getItem("selectedSubjects")
-    );
-    const selectedChapters = JSON.parse(
-      localStorage.getItem("selectedChapters")
-    );
-    const testData = {
-      testName,
-      subjects: selectedSubjects,
-      chapters: selectedChapters,
-    };
-
-    localStorage.setItem("generatedTestData", JSON.stringify(testData));
-
-    try {
-      const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/createtest/fetch-questions`,
-        {
-          selectedSubjects: Object.keys(selectedChapters),
-          selectedChapters: selectedChapters,
-        }
-      );
-
-      if (response.status === 200) {
-        localStorage.setItem(
-          "testQuestions",
-          JSON.stringify(response.data.questions)
-        );
-        router.push("/testinterfaceCT");
-      } else {
-        console.error("Error fetching questions: ", response.data.error);
-        alert("Error generating test - response. Please try again.");
-      }
-    } catch (error) {
-      console.error("Error generating test:", error);
-      alert("Error generating test - try. Please try again.");
+  // Handle Generate Test redirecting to TestInterface.jsx
+  const handleGenerateTest = () => {
+    if (selectedSubjects.length > 0) {
+      router.push("/testinterfaceCT");
+      localStorage.removeItem("testAnswers");
     }
   };
 

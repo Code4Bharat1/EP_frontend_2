@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Bar } from "react-chartjs-2";
+import axios from "axios";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -12,47 +13,135 @@ import {
   Legend,
 } from "chart.js";
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
-
-// Sample Data for Different Timeframes
-const performanceData = {
-  "This Year": {
-    Zoology: [130, 90, 110, 70, 85, 120, 105],
-    Physics: [80, 75, 85, 95, 100, 90, 95],
-    Chemistry: [100, 60, 90, 85, 75, 95, 110],
-    Botany: [95, 110, 75, 60, 120, 100, 105],
-  },
-  "This Month": {
-    Zoology: [100, 85, 90, 95, 80, 115, 100],
-    Physics: [90, 70, 80, 85, 95, 105, 80],
-    Chemistry: [110, 80, 95, 70, 105, 115, 95],
-    Botany: [80, 100, 85, 75, 90, 110, 85],
-  },
-  "This Week": {
-    Zoology: [90, 75, 80, 100, 85, 105, 90],
-    Physics: [95, 65, 85, 70, 105, 100, 95],
-    Chemistry: [85, 55, 75, 90, 70, 105, 80],
-    Botany: [70, 90, 65, 50, 100, 85, 75],
-  },
-};
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 const PerformanceSummaryCard = ({ selectedFilter }) => {
-  const [data, setData] = useState(performanceData[selectedFilter]);
+  const [data, setData] = useState({
+    Physics: [],
+    Chemistry: [],
+    Biology: [],
+    labels: [],
+  });
 
   useEffect(() => {
-    setData(performanceData[selectedFilter]);
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem("authToken");
+        const response = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_BASE_URL}/dashboard/success`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        const rawData = response.data;
+        const currentDate = new Date();
+
+        const isSameYear = (date) =>
+          new Date(date).getFullYear() === currentDate.getFullYear();
+        const isSameMonth = (date) =>
+          isSameYear(date) &&
+          new Date(date).getMonth() === currentDate.getMonth();
+        const isSameWeek = (date) => {
+          const testDate = new Date(date);
+          const weekStart = new Date(currentDate);
+          weekStart.setDate(currentDate.getDate() - currentDate.getDay());
+          return testDate >= weekStart;
+        };
+
+        let labels = [];
+        let performanceData = { Physics: [], Chemistry: [], Biology: [] };
+
+        if (selectedFilter === "This Year") {
+          labels = [
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "May",
+            "Jun",
+            "Jul",
+            "Aug",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dec",
+          ];
+          labels.forEach((month, index) => {
+            const filtered = rawData.filter((item) => {
+              const testDate = new Date(item.updatedAt);
+              return (
+                isSameYear(item.updatedAt) && testDate.getMonth() === index
+              );
+            });
+            performanceData.Physics.push(
+              filtered.reduce((sum, item) => sum + (item.Physics || 0), 0)
+            );
+            performanceData.Chemistry.push(
+              filtered.reduce((sum, item) => sum + (item.Chemistry || 0), 0)
+            );
+            performanceData.Biology.push(
+              filtered.reduce((sum, item) => sum + (item.Biology || 0), 0)
+            );
+          });
+        } else if (selectedFilter === "This Month") {
+          labels = ["Week 1", "Week 2", "Week 3", "Week 4"];
+          labels.forEach((week, index) => {
+            const filtered = rawData.filter((item) => {
+              const testDate = new Date(item.updatedAt);
+              const weekNumber = Math.floor(testDate.getDate() / 7);
+              return isSameMonth(item.updatedAt) && weekNumber === index;
+            });
+            performanceData.Physics.push(
+              filtered.reduce((sum, item) => sum + (item.Physics || 0), 0)
+            );
+            performanceData.Chemistry.push(
+              filtered.reduce((sum, item) => sum + (item.Chemistry || 0), 0)
+            );
+            performanceData.Biology.push(
+              filtered.reduce((sum, item) => sum + (item.Biology || 0), 0)
+            );
+          });
+        } else if (selectedFilter === "This Week") {
+          labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+          labels.forEach((day, index) => {
+            const filtered = rawData.filter((item) => {
+              const testDate = new Date(item.updatedAt);
+              return isSameWeek(item.updatedAt) && testDate.getDay() === index;
+            });
+            performanceData.Physics.push(
+              filtered.reduce((sum, item) => sum + (item.Physics || 0), 0)
+            );
+            performanceData.Chemistry.push(
+              filtered.reduce((sum, item) => sum + (item.Chemistry || 0), 0)
+            );
+            performanceData.Biology.push(
+              filtered.reduce((sum, item) => sum + (item.Biology || 0), 0)
+            );
+          });
+        }
+
+        setData({ ...performanceData, labels });
+      } catch (err) {
+        console.error("Error fetching performance data:", err);
+      }
+    };
+
+    fetchData();
   }, [selectedFilter]);
 
   const chartData = {
-    labels: ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"], // Weekdays
+    labels: data.labels,
     datasets: [
-      {
-        label: "Zoology",
-        data: data.Zoology,
-        backgroundColor: "#1814F3", // Blue
-        barThickness: 8,
-        borderRadius: 10,
-      },
       {
         label: "Physics",
         data: data.Physics,
@@ -68,8 +157,8 @@ const PerformanceSummaryCard = ({ selectedFilter }) => {
         borderRadius: 10,
       },
       {
-        label: "Botany",
-        data: data.Botany,
+        label: "Biology",
+        data: data.Biology,
         backgroundColor: "#16DBCC", // Teal
         barThickness: 8,
         borderRadius: 10,
@@ -94,9 +183,7 @@ const PerformanceSummaryCard = ({ selectedFilter }) => {
     scales: {
       y: {
         beginAtZero: true,
-        max: 150,
         ticks: {
-          stepSize: 30,
           color: "#718EBF",
         },
       },
