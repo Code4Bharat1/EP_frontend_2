@@ -9,9 +9,9 @@ Chart.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 const SpeedCard = ({ selectedFilter }) => {
   // Dummy data for different filters
   const speedData = {
-    "This Year": { physics: 30, chemistry: 40, biology: 35, zoology: 30,prevSpeed: 35 },
-    "This Month": { physics: 25, chemistry: 38, biology: 30, zoology: 29,prevSpeed: 28 },
-    "This Week": { physics: 20, chemistry: 28, biology: 25, zoology: 40, prevSpeed: 22 },
+    "This Year": { physics: 30, chemistry: 40, biology: 35,prevSpeed: 35 },
+    "This Month": { physics: 25, chemistry: 38, biology: 30,prevSpeed: 28 },
+    "This Week": { physics: 20, chemistry: 28, biology: 25, prevSpeed: 22 },
   };
 
   // Set data dynamically based on selected filter
@@ -30,7 +30,7 @@ const SpeedCard = ({ selectedFilter }) => {
 
   // Chart Data
   const chartData = {
-    labels: ["Physics", "Chemistry", "Biology", "Zoology"],
+    labels: ["Physics", "Chemistry", "Biology"],
     datasets: [
       {
         label: "Test Solve Speed (min)",

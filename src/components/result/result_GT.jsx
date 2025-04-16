@@ -34,23 +34,23 @@ const ResultPage = () => {
   const [score, setScore] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
   const [subjects, setSubjects] = useState([]);
-  const [examplan, setExamplan] = useState([]);
+  const [testAnswers, setTestAnswers] = useState([]);
 
   useEffect(() => {
-    const storedExamplan = JSON.parse(localStorage.getItem("examplan")) || [];
-    setExamplan(storedExamplan);
+    const storedAnswers = JSON.parse(localStorage.getItem("testAnswers")) || [];
+    setTestAnswers(storedAnswers);
 
     // Calculate overall score: +4 for correct, -1 for incorrect
     let totalScore = 0;
-    storedExamplan.forEach((answer) => {
+    storedAnswers.forEach((answer) => {
       totalScore += answer.isCorrect ? 4 : -1;
     });
-    const maxOverall = storedExamplan.length * 4;
+    const maxOverall = storedAnswers.length * 4;
     setScore(totalScore);
 
     // Calculate subject-wise scores
     const subjectsObj = {};
-    storedExamplan.forEach((answer) => {
+    storedAnswers.forEach((answer) => {
       if (!subjectsObj[answer.subject]) {
         subjectsObj[answer.subject] = { score: 0, count: 0 };
       }
@@ -85,7 +85,7 @@ const ResultPage = () => {
 
   const handleRetakeTest = () => {
     router.push("/testinterface");
-    localStorage.removeItem("examplan");
+    localStorage.removeItem("testAnswers");
   };
 
   return (
@@ -117,18 +117,18 @@ const ResultPage = () => {
           >
             <motion.span className="text-4xl font-bold">{score}</motion.span>
             <motion.span className="text-lg">
-              of {examplan.length * 4}
+              of {testAnswers.length * 4}
             </motion.span>
           </motion.div>
           <motion.h3 className="text-xl font-semibold mt-4">
-            {(score / (examplan.length * 4)) * 100 >= 70
+            {(score / (testAnswers.length * 4)) * 100 >= 70
               ? "Excellent 🎉"
               : "Keep Improving 💪"}
           </motion.h3>
           <motion.p className="text-sm text-center px-6 mt-2">
             Your percentage:{" "}
-            {examplan.length > 0
-              ? Math.round((score / (examplan.length * 4)) * 100)
+            {testAnswers.length > 0
+              ? Math.round((score / (testAnswers.length * 4)) * 100)
               : 0}
             %
           </motion.p>
@@ -141,7 +141,7 @@ const ResultPage = () => {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <motion.h2 className="text-4xl text-center font-bold text-gray-700 mb-4">
+          <motion.h2 className="text-4xl font-bold text-gray-700 mb-4">
             Summary
           </motion.h2>
 
@@ -177,7 +177,7 @@ const ResultPage = () => {
           >
             <motion.button
               className="bg-[#303B59] text-white py-2 px-8 rounded-md w-64 text-center hover:bg-gray-800"
-              onClick={() => router.push("/review-mistakeEP")}
+              onClick={() => router.push("/review-mistakeCT")}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
@@ -193,7 +193,7 @@ const ResultPage = () => {
             </motion.button>
             <motion.button
               className="bg-[#303B59] text-white py-2 px-8 rounded-md w-64 text-center hover:bg-gray-800"
-              onClick={() => router.push("/viewanalyticsEP")}
+              onClick={() => router.push("/viewanalyticsCT")}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >

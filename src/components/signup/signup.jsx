@@ -70,7 +70,7 @@ const SignUpPage = () => {
     }
 
     try {
-      const response = await axios.post(`${apiBaseUrl}/students/register`, {
+      const response = await axios.post(`${apiBaseUrl}/admin/createadmin`, {
         name,
         emailAddress: email,
         password,

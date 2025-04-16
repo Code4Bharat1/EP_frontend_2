@@ -39,7 +39,7 @@ const TestInterface = () => {
     setSelectedSubjects(storedSubjects);
 
     const fetchQuestions = async () => {
-      try {
+      try { 
         const response = await axios.post(
           `${process.env.NEXT_PUBLIC_API_BASE_URL}/createtest/fetch-questions`,
           {
@@ -114,59 +114,81 @@ const TestInterface = () => {
     minutes: Math.floor((timer % 3600) / 60),
     seconds: timer % 60,
   };
-
+  
   const handleOptionClick = (index) => {
     const questionData = questionsData[currentSubject][currentQuestion];
     const selectedAnswer = questionData.options[index];
     const correctAnswer = questionData.correctAnswer;
     const isCorrect = selectedAnswer === correctAnswer;
-
-    // Find the chapter name by matching the question_id
+  
+    const answerSnapshot = {
+      question_id: questionData.id,
+      selectedAnswer,
+      correctAnswer,
+    };
+    localStorage.setItem("lastAnswerClicked", JSON.stringify(answerSnapshot));
+  
     const questionId = questionData.id;
     const questionInfo = JSON.parse(localStorage.getItem("questionInfo")) || [];
     const chapterInfo = questionInfo.find(
       (item) => item.questionIds === questionId
     );
-
-    // If chapterInfo exists, add the chapter name to the answer data
-    const chapterName = chapterInfo
-      ? chapterInfo.chapterName
-      : "Unknown Chapter";
-
+    const chapterName = chapterInfo ? chapterInfo.chapterName : "Unknown Chapter";
+  
     const answerData = {
       subject: currentSubject,
       question: questionData.question,
       question_id: questionData.id,
-      chapterName, // Add chapter name here
+      chapterName,
       selectedAnswer,
       isCorrect,
       correctAnswer,
     };
-
+  
     let savedAnswers = JSON.parse(localStorage.getItem("testAnswers")) || [];
-    const questionIndex = savedAnswers.findIndex(
-      (answer) => answer.question_id === questionData.id // Use question_id to identify the question
+  
+    const existingIndex = savedAnswers.findIndex(
+      (answer) =>
+        answer.question_id === questionData.id &&
+        answer.subject === currentSubject
     );
-
-    if (questionIndex >= 0) {
-      // If the question is already in the testAnswers, update it
-      savedAnswers[questionIndex] = answerData;
+  
+    const currentTime = new Date();
+    const timeTakenInSeconds = (currentTime - startTime) / 1000;
+    const minutes = Math.floor(timeTakenInSeconds / 60);
+    const seconds = Math.floor(timeTakenInSeconds % 60);
+  
+    const answerWithTime = { ...answerData, timeTaken: { minutes, seconds } };
+  
+    // Replace if already answered, otherwise add new
+    if (existingIndex >= 0) {
+      savedAnswers[existingIndex] = answerWithTime;
     } else {
-      // If the question is not in the testAnswers, add it
-      savedAnswers.push(answerData);
+      savedAnswers.push(answerWithTime);
     }
-
-    // Save the updated testAnswers in localStorage
+  
     localStorage.setItem("testAnswers", JSON.stringify(savedAnswers));
-
-    // Update state for answers and visited questions
+  
     setAnswers({ ...answers, [`${currentSubject}-${currentQuestion}`]: index });
     setVisitedQuestions({
       ...visitedQuestions,
       [`${currentSubject}-${currentQuestion}`]: true,
     });
+  
+    const previousTime = JSON.parse(localStorage.getItem("questionTime")) || {};
+    previousTime[`${currentSubject}-${currentQuestion}`] = timeTakenInSeconds;
+    localStorage.setItem("questionTime", JSON.stringify(previousTime));
+  
+    const savedTimeForCurrentQuestion = previousTime[`${currentSubject}-${currentQuestion}`];
+    const newStartTime = savedTimeForCurrentQuestion
+      ? new Date(new Date() - savedTimeForCurrentQuestion * 1000)
+      : currentTime;
+  
+    setStartTime(newStartTime);
   };
-
+  
+  
+  
   const handleNavigation = (direction) => {
     const totalQuestions = lastIndex || 0;
     console.log(totalQuestions);
@@ -199,52 +221,75 @@ const TestInterface = () => {
 
   const [startTime, setStartTime] = useState(new Date());
 
+
+  //calculate the total time according to the subjects
+  const calculateTotalTime = (subject) => {
+    const questionTime = JSON.parse(localStorage.getItem("questionTime")) || {};
+    let totalTimeInSeconds = 0;
+  
+    // Sum up the time for each question in the current subject
+    Object.keys(questionTime).forEach((key) => {
+      if (key.startsWith(subject)) {
+        totalTimeInSeconds += questionTime[key];
+      }
+    });
+  
+    const minutes = Math.floor(totalTimeInSeconds / 60);
+    const seconds = Math.floor(totalTimeInSeconds % 60);
+  
+    return { minutes, seconds };
+  };
+  
+
   const handleSubmit = async () => {
     if (!window.confirm("Confirm submit?")) return;
-
+  
     const testAnswers = JSON.parse(localStorage.getItem("testAnswers")) || [];
     const authToken =
       localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
     const testName = localStorage.getItem("testName") || [];
-
+  
     if (!authToken) {
       alert("No authentication token found!");
       return;
     }
-
+  
     const correctAnswers = [];
     const wrongAnswers = [];
     const notAttempted = [];
-
+  
     const subjectWiseMarks = {
       Physics: 0,
       Chemistry: 0,
       Biology: 0,
     };
-
+  
     const endTime = new Date();
     let total_marks = 0;
-
-    // Assuming 'selectedChapters' data structure includes the chapters
-    const selectedChapters =
-      JSON.parse(localStorage.getItem("selectedChapters")) || {};
-
+  
+    // Calculate total time per subject
+    const totalTimePerSubject = {
+      Physics: calculateTotalTime("Physics"),
+      Chemistry: calculateTotalTime("Chemistry"),
+      Biology: calculateTotalTime("Biology"),
+    };
+  
     // Loop through the answers and calculate subject-wise marks
     testAnswers.forEach((answerObj) => {
       const { subject, question, selectedAnswer, correctAnswer } = answerObj;
-
+  
       const chapter = "General"; // You can refine this if you track chapters per question
       const questionId = question; // Ideally, replace with questionId if available
       const marks = selectedAnswer === correctAnswer ? 4 : -1; // +4 for correct, -1 for incorrect
       const timeSpent = "N/A"; // Optional: you can integrate actual tracking
-
+  
       // Update the subject-wise marks
       if (selectedAnswer === correctAnswer) {
         subjectWiseMarks[subject] += 4; // Add 4 for correct answers
       } else if (selectedAnswer !== null && selectedAnswer !== "") {
         subjectWiseMarks[subject] -= 1; // Subtract 1 for incorrect answers
       }
-
+  
       const answerPayload = [
         questionId,
         subject,
@@ -254,7 +299,7 @@ const TestInterface = () => {
         marks,
         timeSpent,
       ];
-
+  
       if (!selectedAnswer) {
         notAttempted.push([questionId, subject, chapter]);
       } else if (selectedAnswer === correctAnswer) {
@@ -266,7 +311,7 @@ const TestInterface = () => {
         }
       }
     });
-
+  
     try {
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_BASE_URL}/createtest/submit-test`,
@@ -280,6 +325,7 @@ const TestInterface = () => {
           startTime,
           endTime,
           subjectWiseMarks, // Add subject-wise marks to the payload
+          totalTimePerSubject, // Send total time spent per subject
         },
         {
           headers: {
@@ -287,7 +333,7 @@ const TestInterface = () => {
           },
         }
       );
-
+  
       alert(response.data.message);
       window.location.href = "/resultCT";
     } catch (error) {
@@ -295,7 +341,7 @@ const TestInterface = () => {
       console.error(error);
     }
   };
-
+  
   if (loading)
     return <p className="text-center text-xl">Loading questions...</p>;
   if (error) return <p className="text-center text-red-500">{error}</p>;

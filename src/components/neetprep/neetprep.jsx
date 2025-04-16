@@ -50,18 +50,9 @@ const NeetPrep = () => {
   }, []);
 
   const handleSubjectToggle = (subject) => {
-    if (selectedSubjects.includes(subject)) {
-      const updatedSubjects = selectedSubjects.filter(
-        (item) => item !== subject
-      );
-      setSelectedSubjects(updatedSubjects);
-      if (updatedSubjects.length === 0) {
-        setSelectedChapter("");
-      }
-    } else {
-      setSelectedSubjects([...selectedSubjects, subject]);
-      setSelectedChapter(chapters[subject]);
-    }
+    // Set only the clicked subject as selected
+    setSelectedSubjects([subject]);
+    setSelectedChapter(chapters[subject]);
   };
 
   const progress = Math.min(
@@ -79,7 +70,19 @@ const NeetPrep = () => {
     const allocatedQuestions = subjectUnits?.[subject]?.find(
       (unit) => unit.chapter === chapter
     )?.expected_questions;
+
     if (allocatedQuestions) {
+      // Create an object to store the subject, chapter, and allocated questions
+      const startTestData = {
+        subject: subject,
+        chapter: chapter,
+        allocatedQuestions: allocatedQuestions,
+      };
+
+      // Store the object as a JSON string in localStorage
+      localStorage.setItem("startTest", JSON.stringify(startTestData));
+
+      // Redirect to the test interface
       router.push(
         `/testinterfaceplan?chapter=${encodeURIComponent(
           chapter
@@ -99,9 +102,9 @@ const NeetPrep = () => {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen md:-mt-16 p-4">
+    <div className="flex items-center justify-center min-h-screen md:-mt-16 relative p-4">
       <motion.div
-        className="w-full max-w-6xl bg-white rounded-3xl shadow-lg shadow-blue-400 p-8 relative"
+        className="w-full max-w-6xl bg-white rounded-3xl shadow-lg shadow-blue-400 p-8"
         initial="hidden"
         animate="visible"
         transition={{ staggerChildren: 0.2 }}
@@ -156,32 +159,41 @@ const NeetPrep = () => {
                 {subject} Chapters <span className="text-red-500">*</span>
               </h2>
               <div className="space-y-4">
-                {(subjectUnits?.[subject] || []).map((unit, index) => (
-                  <div
-                    key={index}
-                    className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b pb-3"
-                  >
-                    <div className="text-sm text-gray-800">
-                      <strong>{unit.chapter}</strong> — {unit.allocated_time}{" "}
-                      days, {unit.expected_questions} questions
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm text-gray-600">25%</span>
-                      <div className="w-24 h-2 bg-gray-200 rounded-full">
-                        <div
-                          className="h-2 bg-blue-500 rounded-full"
-                          style={{ width: `25%` }} // Static for now
-                        ></div>
+                {(subjectUnits?.[subject] || []).map((unit, index) => {
+                  // Reverse Progress: More recommended_tests = less progress
+                  const maxRecommendedTests = 10; // Max value for recommended_tests
+                  const progressPercentage = Math.max(
+                    0,
+                    100 - (unit.recommended_tests / maxRecommendedTests) * 100
+                  );
+
+                  return (
+                    <div
+                      key={index}
+                      className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b pb-3"
+                    >
+                      <div className="text-sm text-gray-800">
+                        <strong>{unit.chapter}</strong> — {unit.allocated_time} , {unit.expected_questions} questions
                       </div>
-                      <button
-                        className="px-4 py-1.5 text-sm rounded-md bg-[#49A6CF] text-white hover:bg-[#3c91b3] transition"
-                        onClick={() => handleStartTest(subject, unit.chapter)}
-                      >
-                        Start Test
-                      </button>
+                      <div className="flex items-center gap-4">
+                        {/* Progress Display */}
+                        <span className="text-sm text-gray-600">{`${Math.round(progressPercentage)}%`}</span>
+                        <div className="w-24 h-2 bg-gray-200 rounded-full">
+                          <div
+                            className="h-2 bg-blue-500 rounded-full"
+                            style={{ width: `${progressPercentage}%` }} // Dynamically adjusting the width of the progress bar
+                          ></div>
+                        </div>
+                        <button
+                          className="px-4 py-1.5 text-sm rounded-md bg-[#49A6CF] text-white hover:bg-[#3c91b3] transition"
+                          onClick={() => handleStartTest(subject, unit.chapter)}
+                        >
+                          Start Test
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </motion.div>
           ))
@@ -189,7 +201,7 @@ const NeetPrep = () => {
 
         {/* Girl Image */}
         <motion.div
-          className="absolute left-0 bottom-8 md:bottom-36 w-40 md:w-60 ml-32"
+          className="absolute left-4 top-[-70px] w-40 md:w-60"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5 }}
