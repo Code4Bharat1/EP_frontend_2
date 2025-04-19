@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { FaFlask, FaAtom, FaDna } from "react-icons/fa";
+import toast from "react-hot-toast";
 
 const subjects = [
   { name: "Physics", icon: <FaAtom className="text-lg text-blue-500" /> },
@@ -243,7 +244,9 @@ const TestInterfaceMobile = () => {
     const testName = localStorage.getItem("testName") || [];
 
     if (!authToken) {
-      alert("No authentication token found!");
+      toast.error("No authentication token found!",{
+        duration: 5000
+      });
       return;
     }
 
@@ -323,10 +326,14 @@ const TestInterfaceMobile = () => {
         }
       );
 
-      alert(response.data.message);
+      toast.error(response.data.message,{
+        duration: 5000
+      });
       window.location.href = "/resultCT";
     } catch (error) {
-      alert("Error submitting test!");
+      toast.error("Error submitting test!",{
+        duration: 5000
+      });
       console.error(error);
     }
   };

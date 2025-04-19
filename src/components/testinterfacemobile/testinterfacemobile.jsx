@@ -5,6 +5,7 @@ import { FaFlask, FaAtom, FaDna, FaCalculator } from "react-icons/fa"; // Icons
 import { IoIosArrowBack, IoIosArrowForward } from "react-icons/io"; // Arrows
 import Image from "next/image"; // Import Next.js Image component
 import Link from "next/link";
+import toast from "react-hot-toast";
 
 // Subject data
 const subjects = [
@@ -143,7 +144,9 @@ const TestInterfaceMobile = () => {
 
     const authToken = localStorage.getItem("authToken");
     if (!authToken) {
-      alert("Authentication failed! Please log in again.");
+      toast.error("Authentication failed! Please log in again.",{
+        duration: 5000
+      });
       return;
     }
 
@@ -211,15 +214,21 @@ const TestInterfaceMobile = () => {
       );
 
       if (response.status === 201) {
-        alert("Test submitted successfully!");
+        toast.success("Test submitted successfully!",{
+          duration: 5000
+        });
         localStorage.removeItem("selectedSubject");
         window.location.href = "/result";
       } else {
-        alert("Failed to submit test.");
+        toast.error("Failed to submit test.",{
+          duration: 5000
+        });
       }
     } catch (error) {
       console.error("Error submitting test:", error);
-      alert(`Error: ${error.response?.data?.error || "Something went wrong"}`);
+      toast.error(`Error: ${error.response?.data?.error || "Something went wrong"}`,{
+        duration: 5000
+      });
     }
   };
 

@@ -4,6 +4,7 @@ import FilterCard from "@/components/predictcollege/filtercard";
 import NavBar from "@/components/layout/navbar/navbar";
 import BottomNavbar from "@/components/layout/bottomnav/bottomnav";
 import PredictCollege from "@/components/predictcollege/predictcollege";
+import { Suspense } from "react";
 
 const Page = () => {
   return (
@@ -22,7 +23,9 @@ const Page = () => {
           {/* Main Content */}
           <div className="flex-grow ">
             {/* <AIRBanner/> */}
+            <Suspense fallback={<div>loading</div>}>
             <PredictCollege />
+            </Suspense>
           </div>
 
           {/* Bottom Navbar */}

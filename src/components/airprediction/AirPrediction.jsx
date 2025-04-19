@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation"; // Import useRouter for navigation
 import axios from "axios"; // Import Axios for API calls
+import toast from "react-hot-toast";
 
 const PredictAIR = () => {
   const [targetScore, setTargetScore] = useState("");
@@ -14,7 +15,9 @@ const PredictAIR = () => {
   // Function to fetch prediction from backend
   const predictAIR = async () => {
     if (!targetScore || targetScore < 0 || targetScore > 720) {
-      alert("Please enter a valid score between 0 and 720.");
+      toast.error("Please enter a valid score between 0 and 720.",{
+        duration: 5000
+      });
       return;
     }
 

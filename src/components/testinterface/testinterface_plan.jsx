@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { FaFlask, FaAtom, FaDna } from "react-icons/fa";
+import toast from "react-hot-toast";
 
 const subjects = [
   { name: "Physics", icon: <FaAtom className="text-lg text-blue-500" /> },
@@ -179,7 +180,9 @@ const TestInterface = () => {
   
     const authToken = localStorage.getItem("authToken");
     if (!authToken) {
-      alert("Authentication failed! Please log in again.");
+      toast.error("Authentication failed! Please log in again.",{
+        duration: 5000
+      });
       return;
     }
   
@@ -240,17 +243,23 @@ const TestInterface = () => {
       );
   
       if (response.status === 201) {
-        alert("Test submitted successfully!");
+        toast.success("Test submitted successfully!",{
+          duration: 5000
+        });
         window.location.href = "/result";
       } else {
-        alert("Failed to submit test.");
+        toast.error("Failed to submit test.",{
+          duration: 5000
+        });
       }
     } catch (error) {
       console.error(
         "❌ Error submitting test:",
         error.response?.data || error.message
       );
-      alert(`Error: ${error.response?.data?.error || "Something went wrong"}`);
+      toast.error(`Error: ${error.response?.data?.error || "Something went wrong"}`,{
+        duration: 5000
+      });
     }
   };
   

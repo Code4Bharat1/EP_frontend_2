@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import axios from 'axios';
+import toast from 'react-hot-toast';
 
 const CollegePredictor = () => {
   const searchParams = useSearchParams();
@@ -55,7 +56,9 @@ const CollegePredictor = () => {
 
   const handlePredict = () => {
     if (!selectedState || !selectedCourse || !selectedCategory) {
-      alert("Please fill in all fields!");
+      toast.error("Please fill in all fields!",{
+        duration: 5000
+      });
       return;
     }
 

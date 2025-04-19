@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { TfiTimer } from "react-icons/tfi";
 import { FaFlask, FaAtom, FaDna } from "react-icons/fa";
+import toast from "react-hot-toast";
 
 const subjects = [
   { name: "Physics", icon: <FaAtom className="text-lg text-blue-500" /> },
@@ -281,7 +282,9 @@ const TestInterface = () => {
       );
   
       console.log("Test result submitted:", response.data);
-      alert("Test submitted and saved!");
+      toast.success("Test submitted and saved!",{
+        duration: 5000
+      });
       
       // Optional: clear saved answers or redirect
       // localStorage.removeItem("testAnswers");
@@ -289,7 +292,9 @@ const TestInterface = () => {
   
     } catch (error) {
       console.error("Error submitting test result:", error);
-      alert("Failed to submit test. Please try again.");
+      toast.error("Failed to submit test. Please try again.",{
+        duration: 5000
+      });
     }
   };
     

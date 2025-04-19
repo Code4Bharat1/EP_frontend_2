@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FaFlask, FaAtom, FaDna, FaEye } from "react-icons/fa"; // Icons for subjects
+import { FaFlask, FaAtom, FaDna } from "react-icons/fa"; // Icons for subjects
 import {
   BarChart,
   Bar,
@@ -35,19 +35,26 @@ const ChapterPerformanceChart = () => {
     },
   };
 
-  // Fetch subjects and chapters from localStorage
-  const selectedChaptersFromStorage =
-    JSON.parse(localStorage.getItem("selectedChapters")) || {};
-  const testAnswers = JSON.parse(localStorage.getItem("testAnswers")) || {};
+  // Fetch subjects and chapters from localStorage (only on the client-side)
+  const [selectedChaptersFromStorage, setSelectedChaptersFromStorage] = useState({});
+  const [testAnswers, setTestAnswers] = useState([]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedChapters = JSON.parse(localStorage.getItem("selectedChapters")) || {};
+      const storedTestAnswers = JSON.parse(localStorage.getItem("testAnswers")) || [];
+      setSelectedChaptersFromStorage(storedChapters);
+      setTestAnswers(storedTestAnswers);
+    }
+  }, []);
 
   const handleSubjectChange = (subject) => {
     setSelectedSubject(subject);
   };
 
   useEffect(() => {
-    if (selectedSubject) {
-      const sectionChapters =
-        selectedChaptersFromStorage[selectedSubject] || [];
+    if (selectedSubject && selectedChaptersFromStorage[selectedSubject]) {
+      const sectionChapters = selectedChaptersFromStorage[selectedSubject] || [];
       const sectionAnswers = testAnswers.filter(
         (answer) => answer.subject === selectedSubject
       );
@@ -97,7 +104,7 @@ const ChapterPerformanceChart = () => {
       setIncorrect(totalIncorrect);
       setSkipped(totalSkipped);
     }
-  }, [selectedSubject]);
+  }, [selectedSubject, selectedChaptersFromStorage, testAnswers]);
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6 w-full max-w-4xl mx-auto flex flex-col items-start">
@@ -123,8 +130,6 @@ const ChapterPerformanceChart = () => {
           ))}
         </div>
       </div>
-
-      {/* Subject Section */}
 
       {/* Chart */}
       <ResponsiveContainer width="100%" height={300}>
@@ -161,9 +166,8 @@ const ChapterPerformanceChart = () => {
         </BarChart>
       </ResponsiveContainer>
 
-      {/* Subject Scores */}
+      {/* Legend */}
       <div className="w-full flex flex-wrap md:flex-row md:items-center md:justify-around mb-4">
-        {/* Legend */}
         <div className="flex flex-wrap gap-4 mt-2 md:mt-0">
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 md:w-4 md:h-4 bg-[#F93535] rounded"></span>

@@ -9,16 +9,27 @@ const RecentTestReportCard = ({ filterType }) => {
   const [overallMarks, setOverallMarks] = useState(0);
   const [overallTotalQuestions, setOverallTotalQuestions] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [isClient, setIsClient] = useState(false); // State to track if we are on the client-side
 
-  // Fetch studentId from localStorage
-  const studentId = localStorage.getItem("studentId");
+  const [studentId, setStudentId] = useState(null);
+
+  // Check if we are on the client side before accessing localStorage
+  useEffect(() => {
+    setIsClient(true); // Set to true once the component has mounted
+    const storedStudentId = localStorage.getItem("studentId");
+    if (storedStudentId) {
+      setStudentId(storedStudentId);
+    } else {
+      console.error("Student ID is missing in localStorage");
+    }
+  }, []); // Empty dependency array ensures this runs only once after mounting
 
   useEffect(() => {
+    if (!studentId) {
+      return; // If studentId is not set, do nothing
+    }
+
     const fetchTestData = async () => {
-      if (!studentId) {
-        console.error("Student ID is missing in localStorage");
-        return;
-      }
       try {
         const response = await axios.post(
           `${process.env.NEXT_PUBLIC_API_BASE_URL}/user/recent`, // Backend API endpoint
@@ -49,6 +60,11 @@ const RecentTestReportCard = ({ filterType }) => {
   const calculatePercentage = (marks, totalMarks) => {
     return totalMarks > 0 ? ((marks / totalMarks) * 100).toFixed(2) : 0;
   };
+
+  // Ensure rendering only on the client side after studentId has been loaded
+  if (!isClient) {
+    return null; // Don't render anything until we have client-side access
+  }
 
   return (
     <div className="flex flex-col items-center w-full">

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios'; // Import axios for API calls
+import toast from 'react-hot-toast';
 
 const VerifyYourEmail = () => {
   const [code, setCode] = useState(new Array(4).fill('')); // OTP input fields
@@ -55,7 +56,9 @@ const VerifyYourEmail = () => {
       });
 
       if (response.status >= 200 && response.status < 300) {
-        alert('OTP resent successfully!');
+        toast.success('OTP resent successfully!',{
+          duration: 5000
+        });
         setTimeLeft(60); // Reset timer after successful resend
       }
     } catch (err) {
@@ -97,7 +100,9 @@ const VerifyYourEmail = () => {
       });
 
       if (response.status >= 200 && response.status < 300) {
-        alert('OTP verified successfully!');
+        toast.success('OTP verified successfully!',{
+          duration: 5000
+        });
         localStorage.removeItem('email'); // Optionally remove email from localStorage
         router.push('/login'); // Redirect to login page
       }

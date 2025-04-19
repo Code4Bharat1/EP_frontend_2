@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { FcNext } from "react-icons/fc";
+import toast from "react-hot-toast";
 
 const Preview = () => {
   const [testName, setTestName] = useState("");
@@ -139,11 +140,15 @@ const Preview = () => {
         router.push("/testinterface");
       } else {
         console.error("Error fetching questions: ", response.data.error);
-        alert("Error generating test. Please try again.");
+        toast.error("Error generating test. Please try again.",{
+          duration: 5000
+        });
       }
     } catch (error) {
       console.error("Error generating test:", error);
-      alert("Error generating test. Please try again.");
+      toast.error("Error generating test. Please try again.",{
+        duration: 5000
+      });
     }
   };
 

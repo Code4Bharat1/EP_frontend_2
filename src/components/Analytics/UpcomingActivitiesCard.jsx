@@ -1,65 +1,67 @@
 "use client";
 
+import React, { useState, useEffect } from "react";
+import axios from "axios"; // Import axios for making API requests
+
 const UpcomingActivitiesCard = () => {
-  // Data for the upcoming activities
-  const activities = [
-    {
-      date: "31",
-      title: "Chemistry Test",
-      description: "Created Test",
-      time: "10 A.M. - 11 A.M.",
-      status: "Due soon",
-      statusColor: "text-[#FF1515]", // 🔴 Red for Due soon
-    },
-    {
-      date: "04",
-      title: "NEET Mock Test",
-      description: "Created Test",
-      time: "10 A.M. - 11 A.M.",
-      status: "Upcoming",
-      statusColor: "text-[#FF9924]", // 🟠 Orange for Upcoming
-    },
-    {
-      date: "12",
-      title: "NEET Practice Test",
-      description: "Recommended Test",
-      time: "10 A.M. - 11 A.M.",
-      status: "Upcoming",
-      statusColor: "text-[#FF9924]",
-    },
-    {
-      date: "01",
-      title: "Chemistry Test",
-      description: "Created Test",
-      time: "10 A.M. - 11 A.M.",
-      status: "Due soon",
-      statusColor: "text-[#FF1515]", // 🔴 Red for Due soon
-    },
-    {
-      date: "2",
-      title: "Physics Practice Test",
-      description: "Recommended Test",
-      time: "10 A.M. - 11 A.M.",
-      status: "Upcoming",
-      statusColor: "text-[#FF9924]",
-    },
-    {
-      date: "6",
-      title: "Physics Practice Test",
-      description: "Recommended Test",
-      time: "10 A.M. - 11 A.M.",
-      status: "Upcoming",
-      statusColor: "text-[#FF9924]",
-    },
-    {
-      date: "7",
-      title: "Physics Practice Test",
-      description: "Recommended Test",
-      time: "10 A.M. - 11 A.M.",
-      status: "Upcoming",
-      statusColor: "text-[#FF9924]",
-    },
-  ];
+  const [activities, setActivities] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetching the test details when the component is mounted
+  useEffect(() => {
+    const fetchActivities = async () => {
+      try {
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_BASE_URL}/newadmin/test-data`);
+        const allTests = response.data.tests;
+
+        // Filter out tests based on their start date
+        const currentDate = new Date();
+        const filteredTests = allTests.filter((test) => {
+          const examStartDate = new Date(test.exam_start_date);
+          return examStartDate >= currentDate; // Only show future tests
+        });
+
+        // Add a label for "Due Soon" or "Upcoming"
+        const labeledTests = filteredTests.map((test) => {
+          const examStartDate = new Date(test.exam_start_date);
+          const daysDifference = Math.floor((examStartDate - currentDate) / (1000 * 3600 * 24));
+
+          let status = "Upcoming Test"; // Default label
+
+          if (daysDifference <= 10) {
+            status = "Due Soon";
+          }
+
+          return {
+            ...test,
+            status,
+            statusColor: status === "Due Soon" ? "text-[#FF1515]" : "text-[#FF9924]", // Red for Due Soon, Orange for Upcoming
+            exam_start_date: examStartDate.toLocaleDateString(), // Format the date
+          };
+        });
+
+        setActivities(labeledTests); // Set the filtered and labeled tests
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching activities:", err);
+        setError("Failed to load activities");
+        setLoading(false);
+      }
+    };
+
+    fetchActivities();
+  }, []);
+
+  // Handle loading state
+  if (loading) {
+    return <div>Loading activities...</div>;
+  }
+
+  // Handle error state
+  if (error) {
+    return <div>{error}</div>;
+  }
 
   return (
     <div className="pt- flex flex-col items-center justify-center sm:w-full sm:h-auto md:flex-row md:items-start md:justify-center">
@@ -83,21 +85,21 @@ const UpcomingActivitiesCard = () => {
             >
               {/* Date Section */}
               <div className="flex-shrink-0 bg-[#0052B4] text-white w-12 h-12 rounded-lg flex items-center justify-center font-bold text-lg">
-                {activity.date}
+                {activity.id}
               </div>
 
               {/* Activity Info */}
               <div className="ml-4 flex-1">
-                <h3 className="text-sm font-bold mb-1">{activity.title}</h3>
+                <h3 className="text-sm font-bold mb-1">{activity.testname}</h3>
                 <p className="text-xs text-blue-500 font-semibold">
-                  {activity.description}
+                  {activity.subject || "No subject specified"} {/* Show subject if exists */}
                 </p>
               </div>
 
               {/* Time and Status */}
               <div className="text-right">
                 <p className="text-[10px] text-gray-500 font-semibold">
-                  {activity.time}
+                  {activity.exam_start_date}
                 </p>
                 <p className={`text-xs font-medium ${activity.statusColor}`}>
                   {activity.status}

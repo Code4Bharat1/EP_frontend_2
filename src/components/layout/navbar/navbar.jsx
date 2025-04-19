@@ -7,7 +7,6 @@ import {
   IoMoonOutline,
   IoSunnyOutline,
 } from "react-icons/io5";
-import { FaSearch } from "react-icons/fa";
 import { MdAccountCircle, MdLogout } from "react-icons/md";
 import axios from "axios";
 
@@ -22,6 +21,7 @@ const NavBar = () => {
   const notificationsRef = useRef(null);
 
   const [profileImage, setProfileImage] = useState("/profile.png");
+  const [notifications, setNotifications] = useState([]);
 
   // Fetch profile image from the backend API
   useEffect(() => {
@@ -47,6 +47,40 @@ const NavBar = () => {
 
     fetchProfileImage();
   }, [router]);
+
+  // Fetch notifications dynamically based on test start and end dates
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const response = await axios.get(`${apiBaseUrl}/newadmin/test-data`);
+        const tests = response.data.tests;
+        const currentDate = new Date();
+
+        const newNotifications = [];
+
+        tests.forEach((test) => {
+          const examStartDate = new Date(test.exam_start_date);
+          const examEndDate = new Date(test.exam_end_date);
+
+          // Check if the exam_start_date matches today
+          if (examStartDate.toDateString() === currentDate.toDateString()) {
+            newNotifications.push(`New test - ${test.testname}`);
+          }
+
+          // Check if the exam_end_date matches today (Last day notification)
+          if (examEndDate.toDateString() === currentDate.toDateString()) {
+            newNotifications.push(`Last day for the test - ${test.testname}`);
+          }
+        });
+
+        setNotifications(newNotifications); // Set the notifications state
+      } catch (error) {
+        console.error("Error fetching notifications:", error);
+      }
+    };
+
+    fetchNotifications();
+  }, []);
 
   // Toggle Dark Mode
   const toggleDarkMode = () => {
@@ -89,12 +123,7 @@ const NavBar = () => {
     <div className="hidden md:flex w-full bg-gradient-to-r from-[#27759C] to-[#0E2936] px-8 py-4 items-center justify-between relative">
       {/* Left Section - Search Bar */}
       <div className="flex items-center flex-grow max-w-md">
-        {/*<FaSearch className="absolute top-3 left-3 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search Class, Documents, Activities..."
-            className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 text-left"
-          /> */}
+        {/* Your previous search bar logic can be added here */}
       </div>
 
       {/* Right Section - Icons */}
@@ -126,7 +155,7 @@ const NavBar = () => {
             onClick={toggleNotifications}
           />
           <span className="absolute top-0 right-0 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">
-            3
+            {notifications.length}
           </span>
 
           {/* Notifications Popup */}
@@ -136,15 +165,20 @@ const NavBar = () => {
                 Notifications
               </div>
               <ul className="text-sm text-gray-600">
-                <li className="px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                  📢 New test available
-                </li>
-                <li className="px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                  ✅ Your goal setup is completed
-                </li>
-                <li className="px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                  📅 Your upcoming test is tomorrow
-                </li>
+                {notifications.length === 0 ? (
+                  <li className="px-4 py-2 text-center text-gray-500">
+                    No new notifications
+                  </li>
+                ) : (
+                  notifications.map((notification, index) => (
+                    <li
+                      key={index}
+                      className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                    >
+                      {notification}
+                    </li>
+                  ))
+                )}
               </ul>
             </div>
           )}

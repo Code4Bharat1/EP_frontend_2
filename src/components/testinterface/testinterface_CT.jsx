@@ -12,6 +12,7 @@ const subjects = [
 
 const TestInterface = () => {
   const [selectedSubjects, setSelectedSubjects] = useState([]);
+   const [selectedChapters, setSelectedChapters] = useState({});
   const [questionsData, setQuestionsData] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -22,24 +23,31 @@ const TestInterface = () => {
   const [markedForReview, setMarkedForReview] = useState({});
   const [timer, setTimer] = useState(10800);
   const [lastIndex, setLastIndex] = useState(0);
-
-  const selectedChapters =
-    JSON.parse(localStorage.getItem("selectedChapters")) || {};
-  const numQuestions = selectedChapters[currentSubject]
-    ? Object.values(selectedChapters[currentSubject]).reduce(
-        (total, chapter) => total + (Number(chapter.numQuestions) || 0),
-        0
-      )
-    : 0;
+  const [numQuestions, setnumQuestion] =useState();
+  
 
   useEffect(() => {
-    const storedSubjects = JSON.parse(
-      localStorage.getItem("selectedSubjects") || "[]"
-    );
+    if (typeof window === "undefined") return; // Safety check for SSR
+  
+    const selectedChapters =
+      JSON.parse(localStorage.getItem("selectedChapters")) || {};
+  
+    const storedSubjects =
+      JSON.parse(localStorage.getItem("selectedSubjects")) || [];
+  
     setSelectedSubjects(storedSubjects);
-
+  
+    const subjectChapters = selectedChapters[currentSubject];
+    const numQuestion = subjectChapters
+      ? Object.values(subjectChapters).reduce(
+          (total, chapter) => total + (Number(chapter.numQuestions) || 0),
+          0
+        )
+      : 0;
+      setnumQuestion(numQuestion);
+  
     const fetchQuestions = async () => {
-      try { 
+      try {
         const response = await axios.post(
           `${process.env.NEXT_PUBLIC_API_BASE_URL}/createtest/fetch-questions`,
           {
@@ -49,13 +57,13 @@ const TestInterface = () => {
           }
         );
         const data = response.data;
-
+  
         const subjectWiseQuestions = {
           Physics: [],
           Chemistry: [],
           Biology: [],
         };
-
+  
         data.questions.forEach((item) => {
           const subject = item.question.subject;
           subjectWiseQuestions[subject]?.push({
@@ -67,16 +75,17 @@ const TestInterface = () => {
               : null,
           });
         });
+  
         setQuestionsData(subjectWiseQuestions);
         setLoading(false);
-
-        // Store the data (chapterId, chapterName, questionIds) in localStorage
+  
+        // Store chapter info
         const questionInfo = data.questions.map((item) => ({
           chapterId: item.question.chapterId,
           chapterName: item.question.chapter,
           questionIds: item.question.id,
         }));
-
+  
         localStorage.setItem("questionInfo", JSON.stringify(questionInfo));
       } catch (err) {
         console.error("Error fetching questions:", err);
@@ -84,8 +93,10 @@ const TestInterface = () => {
         setLoading(false);
       }
     };
+  
     fetchQuestions();
-  }, [numQuestions]);
+  }, [currentSubject]); // Depend only on currentSubject
+  
 
   useEffect(() => {
     const countdown = setInterval(() => {

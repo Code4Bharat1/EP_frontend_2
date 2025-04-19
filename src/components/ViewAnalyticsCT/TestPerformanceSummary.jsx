@@ -19,12 +19,24 @@ const TestPerformanceSummary = () => {
   const [selectedData, setSelectedData] = useState([]); // To store the data to be shown on the chart
   const [error, setError] = useState(null);
   const [subjects, setSubjects] = useState([]);
+  const [studentId, setStudentId] = useState(null);
 
-  const studentId = localStorage.getItem("authToken"); // Fetch studentId from localStorage
+  // Fetch the studentId from localStorage after the component mounts
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.localStorage) {
+      const storedStudentId = localStorage.getItem("authToken"); // Fetch studentId from localStorage
+      setStudentId(storedStudentId); // Update state with the studentId
+    }
+  }, []);
 
-  // Fetch test data dynamically from the backend
+  // Fetch test data dynamically from the backend once studentId is available
   useEffect(() => {
     const fetchTestData = async () => {
+      if (!studentId) {
+        setError("Unauthorized: No student ID found");
+        return;
+      }
+
       try {
         const response = await axios.get(
           `${process.env.NEXT_PUBLIC_API_BASE_URL}/createtest/viewanalytics`,
@@ -54,11 +66,9 @@ const TestPerformanceSummary = () => {
     };
 
     if (studentId) {
-      fetchTestData();
-    } else {
-      setError("Unauthorized: No student ID found");
+      fetchTestData(); // Fetch test data once studentId is available
     }
-  }, [studentId, selectedSection]); // Re-fetch data when selectedSection changes
+  }, [studentId, selectedSection]); // Re-fetch data when selectedSection or studentId changes
 
   // Handle subject change from the dropdown
   const handleSectionChange = (e) => {
@@ -66,6 +76,14 @@ const TestPerformanceSummary = () => {
   };
 
   // Check if there's data to display
+  if (error) {
+    return (
+      <div className="bg-white rounded-lg shadow-md p-6 w-full max-w-sm flex flex-col mx-auto">
+        <p>{error}</p>
+      </div>
+    );
+  }
+
   if (!selectedData.length) {
     return (
       <div className="bg-white rounded-lg shadow-md p-6 w-full max-w-sm flex flex-col mx-auto">

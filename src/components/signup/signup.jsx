@@ -10,6 +10,7 @@ import {
   AiOutlineEye,
   AiOutlineEyeInvisible,
 } from "react-icons/ai";
+import toast from "react-hot-toast";
 
 const SignUpPage = () => {
   const router = useRouter();
@@ -80,7 +81,9 @@ const SignUpPage = () => {
       if (response.status >= 200 && response.status < 300) {
         setOtpSent(true);
         localStorage.setItem("email", email); // Store email for OTP verification
-        alert("Registration successful! Check your email for OTP.");
+        toast.success("Registration successful! Check your email for OTP.",{
+          duration: 5000
+        });
         router.push("/verifyyouremail"); // Redirect to OTP verification page
       }
     } catch (err) {
