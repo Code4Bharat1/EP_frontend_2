@@ -44,7 +44,7 @@ const Page = () => {
     }
   };
 
-  return (
+  return (  
     <div className="md:flex min-h-screen relative bg-white">
       {/* Sidebar for md screens (Excluded from Snapshot) */}
       <Sidebar />
@@ -68,7 +68,7 @@ const Page = () => {
         <div ref={captureRef} className="bg-white w-full">
           {/* Updated Grid Layout: 3 Columns in Medium Screens */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mx-4  mt-6">
-            <SpeedCard selectedFilter={selectedFilter} />
+            <SpeedCard changeDate={selectedFilter} />
             <AccuracyCard selectedFilter={selectedFilter} />
             <SuccessRateCard selectedFilter={selectedFilter} />
           </div>

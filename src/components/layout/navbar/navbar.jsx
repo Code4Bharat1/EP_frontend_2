@@ -89,14 +89,12 @@ const NavBar = () => {
     <div className="hidden md:flex w-full bg-gradient-to-r from-[#27759C] to-[#0E2936] px-8 py-4 items-center justify-between relative">
       {/* Left Section - Search Bar */}
       <div className="flex items-center flex-grow max-w-md">
-        <div className="relative w-full">
-          <FaSearch className="absolute top-3 left-3 text-gray-400" />
+        {/*<FaSearch className="absolute top-3 left-3 text-gray-400" />
           <input
             type="text"
             placeholder="Search Class, Documents, Activities..."
             className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 text-left"
-          />
-        </div>
+          /> */}
       </div>
 
       {/* Right Section - Icons */}

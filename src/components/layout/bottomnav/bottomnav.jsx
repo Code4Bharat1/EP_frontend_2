@@ -8,12 +8,12 @@ const BottomNavbar = ({ activePage }) => {
   const navItems = [
     { name: "Dashboard", icon: <FaThLarge />, path: "/dashboard" },
     { name: "Test", icon: <FaFileAlt />, path: "/testselection" },
-    { name: "Results", icon: <FaChartPie />, path: "/analytics" },
-    { name: "Colleges", icon: <FaUniversity />, path: "/explorecolleges" },
+    { name: "Results", icon: <FaChartPie />, path: "/pasttest" },
+    { name: "Colleges", icon: <FaUniversity />, path: "/colleges" },
   ];
 
   return (
-    <div className="block fixed bottom-0 left-0 w-full bg-white shadow-md z-50 md:hidden">
+    <div className="block fixed bottom-0 left-0 mt-10 w-full bg-white shadow-md z-50 md:hidden">
       <div className="flex justify-around items-center py-2">
         {navItems.map((item) => (
           <div

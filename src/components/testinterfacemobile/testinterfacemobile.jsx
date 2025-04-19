@@ -1,46 +1,82 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { TfiTimer } from "react-icons/tfi";
+import axios from "axios";
 import { FaFlask, FaAtom, FaDna, FaCalculator } from "react-icons/fa"; // Icons
 import { IoIosArrowBack, IoIosArrowForward } from "react-icons/io"; // Arrows
 import Image from "next/image"; // Import Next.js Image component
 import Link from "next/link";
 
+// Subject data
 const subjects = [
   { name: "Maths", icon: <FaCalculator className="text-lg text-blue-500" /> },
   { name: "Physics", icon: <FaAtom className="text-lg text-blue-500" /> },
-  { name: "Chemistry", icon: <FaFlask className="text-lg text-green-500" /> },
+  { name: "Chemistry", icon:<FaFlask className="text-lg text-green-500" /> }, 
   { name: "Biology", icon: <FaDna className="text-lg text-red-500" /> },
 ];
 
-const totalQuestions = 10;
-const allQuestions = {
-  Maths: Array(10).fill({
-    question: "What is the purpose of a loader in an interface?",
-    options: ["Improves speed", "Enhances UI", "Shows progress", "Saves memory"],
-  }),
-  Physics: Array(10).fill({
-    question: "What is Newton’s Second Law?",
-    options: ["F = ma", "E = mc^2", "V = IR", "P = IV"],
-  }),
-  Chemistry: Array(10).fill({
-    question: "What is Avogadro's number?",
-    options: ["6.022x10^23", "1.6x10^-19", "9.81", "3.0x10^8"],
-  }),
-  Biology: Array(10).fill({
-    question: "What is the powerhouse of the cell?",
-    options: ["Mitochondria", "Nucleus", "Ribosome", "Golgi apparatus"],
-  }),
-};
-
 const TestInterfaceMobile = () => {
-  const [currentSubject, setCurrentSubject] = useState("Maths");
+  const [currentSubject, setCurrentSubject] = useState("");
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState({});
   const [markedForReview, setMarkedForReview] = useState({});
   const [visitedQuestions, setVisitedQuestions] = useState({});
   const [timer, setTimer] = useState(10800); // 3 hours countdown
+  const [questionsData, setQuestionsData] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedSubject, setSelectedSubject] = useState(""); 
 
+  
+  // Fetch questions from API
+  useEffect(() => {
+    const subjectFromStorage = localStorage.getItem("selectedSubject");
+    setCurrentSubject(subjectFromStorage);
+    setSelectedSubject(subjectFromStorage); // Default to "Maths" if no subject is selected
+  }, []);
+
+  // Fetch questions based on the selected subject
+  useEffect(() => {
+    if (selectedSubject) {
+      const fetchQuestions = async () => {
+        try {
+          const response = await axios.get(
+            `${process.env.NEXT_PUBLIC_API_BASE_URL}/question/fetch-questions`
+          );
+          const data = response.data;
+          const subjectWiseQuestions = {
+            Physics: [],
+            Chemistry: [],
+            Biology: [],
+            Maths: [],
+          };
+
+          // Filter questions based on the selected subject
+          data.questions.forEach((item) => {
+            const subject = item.question.subject;
+            if (subject === selectedSubject) {
+              subjectWiseQuestions[subject]?.push({
+                id: item.question.id,
+                question: item.question.question_text,
+                options: item.options.map((opt) => opt.option_text),
+                correctOption: item.options.find((opt) => opt.is_correct)?.option_text,
+              });
+            }
+          });
+
+          setQuestionsData(subjectWiseQuestions);
+          setLoading(false);
+        } catch (err) {
+          console.error("Error fetching questions:", err);
+          setError("Failed to load questions");
+          setLoading(false);
+        }
+      };
+
+      fetchQuestions();
+    }
+  }, [selectedSubject]);
+
+  // Countdown timer
   useEffect(() => {
     const countdown = setInterval(() => {
       setTimer((prev) => (prev > 0 ? prev - 1 : 0));
@@ -48,23 +84,29 @@ const TestInterfaceMobile = () => {
     return () => clearInterval(countdown);
   }, []);
 
+  // Format time for display
   const formattedTime = {
     hours: Math.floor(timer / 3600),
     minutes: Math.floor((timer % 3600) / 60),
     seconds: timer % 60,
   };
 
+  // Handle answer selection
   const handleOptionClick = (index) => {
     setAnswers({ ...answers, [`${currentSubject}-${currentQuestion}`]: index });
-    setVisitedQuestions({ ...visitedQuestions, [`${currentSubject}-${currentQuestion}`]: true });
+    setVisitedQuestions({
+      ...visitedQuestions,
+      [`${currentSubject}-${currentQuestion}`]: true,
+    });
 
     if (markedForReview[`${currentSubject}-${currentQuestion}`]) {
       setMarkedForReview({ ...markedForReview, [`${currentSubject}-${currentQuestion}`]: false });
     }
   };
 
+  // Handle navigation between questions
   const handleNavigation = (direction) => {
-    if (direction === "next" && currentQuestion < allQuestions[currentSubject].length - 1) {
+    if (direction === "next" && currentQuestion < questionsData[currentSubject].length - 1) {
       setCurrentQuestion(currentQuestion + 1);
     } else if (direction === "prev" && currentQuestion > 0) {
       setCurrentQuestion(currentQuestion - 1);
@@ -72,17 +114,20 @@ const TestInterfaceMobile = () => {
     setVisitedQuestions({ ...visitedQuestions, [`${currentSubject}-${currentQuestion}`]: true });
   };
 
+  // Mark question for review
   const handleReviewLater = () => {
     setMarkedForReview({ ...markedForReview, [`${currentSubject}-${currentQuestion}`]: true });
     handleNavigation("next");
   };
 
+  // Clear answer for current question
   const handleClearResponse = () => {
     const updatedAnswers = { ...answers };
     delete updatedAnswers[`${currentSubject}-${currentQuestion}`];
     setAnswers(updatedAnswers);
   };
 
+  // Get question status (answered, unanswered, review, etc.)
   const getQuestionStatus = (questionIndex) => {
     const key = `${currentSubject}-${questionIndex}`;
     if (answers[key] !== undefined) return "answered"; // Answered
@@ -91,30 +136,121 @@ const TestInterfaceMobile = () => {
     return "not-visited"; // Not visited
   };
 
+  // Submit the test
+  const handleSubmit = async () => {
+    const confirmSubmit = window.confirm("Confirm submit?");
+    if (!confirmSubmit) return;
+
+    const authToken = localStorage.getItem("authToken");
+    if (!authToken) {
+      alert("Authentication failed! Please log in again.");
+      return;
+    }
+
+    const endTime = new Date().toISOString();
+    const startTime = localStorage.getItem("testStartTime") || new Date().toISOString();
+    let correctAnswers = [];
+    let wrongAnswers = [];
+    let notAttempted = [];
+    let totalMarks = 0;
+
+    // Process all answers to categorize them properly
+    Object.keys(questionsData).forEach((subject) => {
+      questionsData[subject].forEach((question, index) => {
+        const selectedOptionIndex = answers[`${subject}-${index}`];
+        const selectedOption = question.options[selectedOptionIndex] || null;
+        const correctOption = question.options.find((opt) => opt === question.correctOption);
+        const marks =
+          selectedOption === correctOption
+            ? 4
+            : selectedOption === null
+            ? 0
+            : -1;
+
+        const questionData = [
+          question.id,
+          subject,
+          question.chapter,
+          selectedOption,
+          correctOption,
+          marks,
+          0, // Time spent can be calculated if tracked
+        ];
+
+        if (selectedOption === null) {
+          notAttempted.push([question.id, subject, question.chapter]);
+        } else if (selectedOption === correctOption) {
+          correctAnswers.push(questionData);
+        } else {
+          wrongAnswers.push(questionData);
+        }
+
+        totalMarks += marks;
+      });
+    });
+
+    const testResults = {
+      correctAnswers,
+      wrongAnswers,
+      notAttempted,
+      startTime,
+      endTime,
+      total_marks: totalMarks,
+    };
+
+    try {
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/fulltest/submit`,
+        testResults,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+        }
+      );
+
+      if (response.status === 201) {
+        alert("Test submitted successfully!");
+        localStorage.removeItem("selectedSubject");
+        window.location.href = "/result";
+      } else {
+        alert("Failed to submit test.");
+      }
+    } catch (error) {
+      console.error("Error submitting test:", error);
+      alert(`Error: ${error.response?.data?.error || "Something went wrong"}`);
+    }
+  };
+
+  // Show loading screen if questions are still being fetched
+  if (loading) return <p className="text-center text-xl">Loading questions...</p>;
+  if (error) return <p className="text-center text-red-500">{error}</p>;
+
   return (
     <div className="h-screen w-full bg-gray-100 flex flex-col px-4 py-4">
-      {/* Mock Test Header */}
-      <div className="text-center">
+      <div className="text-center py-4">
         <button className="bg-[#49A6CF] text-white font-bold py-2 px-6 rounded-md text-lg cursor-default">
           Mock Test
         </button>
       </div>
 
       {/* Subject Tabs */}
-      <div className="grid grid-cols-2 gap-2 mt-4">
+      <div className="flex justify-center items-center">
         {subjects.map((subject) => (
-          <button
-            key={subject.name}
-            className={`px-6 py-2 flex items-center justify-center gap-2 rounded-md border ${
-              currentSubject === subject.name ? "bg-[#49A6CF] text-white font-bold" : "border-gray-300"
-            }`}
-            onClick={() => {
-              setCurrentSubject(subject.name);
-              setCurrentQuestion(0);
-            }}
-          >
-            {subject.icon} {subject.name}
-          </button>
+          currentSubject === subject.name && (
+            <button
+              key={subject.name}
+              className={`px-6 py-2 flex items-center gap-2 rounded-md border ${
+                currentSubject === subject.name
+                  ? "border-blue-500 text-blue-600 font-bold"
+                  : "border-gray-300"
+              }`}
+              onClick={() => setCurrentSubject(subject.name)}
+            >
+              {subject.icon} {subject.name}
+            </button>
+          )
         ))}
       </div>
 
@@ -176,21 +312,19 @@ const TestInterfaceMobile = () => {
 
       {/* Question and Options Section */}
       <div className="mt-4 bg-white p-4 rounded-lg shadow-md">
-        <h3 className="text-lg font-semibold">Q{currentQuestion + 1}. {allQuestions[currentSubject][currentQuestion].question}</h3>
-        
-        {/* Add the Image Here */}
+        <h3 className="text-lg font-semibold">Q{currentQuestion + 1}. {questionsData[currentSubject]?.[currentQuestion]?.question || "No Question Available"}</h3>
         <div className="my-4">
           <Image
-            src="/question.png" // Path to your image
+            src="/question.png"
             alt="Question Image"
-            width={300} // Adjust width as needed
-            height={200} // Adjust height as needed
+            width={300}
+            height={200}
             className="rounded-lg"
           />
         </div>
 
         {/* Options with Highlight */}
-        {allQuestions[currentSubject][currentQuestion].options.map((option, index) => (
+        {questionsData[currentSubject]?.[currentQuestion]?.options.map((option, index) => (
           <button
             key={index}
             className={`block w-full text-left px-4 py-2 border rounded-md mt-2 ${
@@ -207,43 +341,28 @@ const TestInterfaceMobile = () => {
 
       {/* Bottom Buttons */}
       <div className="grid grid-cols-2 gap-2 mt-2">
-        <button
-          className="bg-[#49A6CF] text-white py-2 px-4 rounded-md"
-          onClick={handleClearResponse}
-        >
+        <button className="bg-[#49A6CF] text-white py-2 px-4 rounded-md" onClick={handleClearResponse}>
           Clear Response
         </button>
-        <button
-          className="bg-[#49A6CF] text-white py-2 px-4 rounded-md"
-          onClick={handleReviewLater}
-        >
+        <button className="bg-[#49A6CF] text-white py-2 px-4 rounded-md" onClick={handleReviewLater}>
           Review Later
         </button>
-        <button
-          className="bg-[#49A6CF] text-white py-2 px-4 rounded-md"
-          onClick={() => handleNavigation("prev")}
-        >
+        <button className="bg-[#49A6CF] text-white py-2 px-4 rounded-md" onClick={() => handleNavigation("prev")}>
           Previous
         </button>
-        <button
-          className="bg-[#49A6CF] text-white py-2 px-4 rounded-md"
-          onClick={() => handleNavigation("next")}
-        >
+        <button className="bg-[#49A6CF] text-white py-2 px-4 rounded-md" onClick={() => handleNavigation("next")}>
           Next
         </button>
       </div>
 
-      {/* Submit Button Centered */}
-      <div className="flex justify-center  mt-4">
+      <div className="flex justify-center mt-4">
         <Link href="/result">
           <button className="bg-[#e51d1d] text-white py-2 px-5 rounded-sm font-bold text-lg">
             Submit Test
           </button>
         </Link>
       </div>
-
     </div>
-  
   );
 };
 

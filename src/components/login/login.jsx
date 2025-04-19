@@ -28,6 +28,7 @@ const Login = () => {
         `${process.env.NEXT_PUBLIC_API_BASE_URL}/students/login`,
         { emailAddress: formData.email, password: formData.password }
       );
+      console.log("i ran")
       localStorage.setItem("authToken", response.data.token);
       router.push("/dashboard"); // Redirect to dashboard after successful login
     } catch (err) {
@@ -55,7 +56,7 @@ const Login = () => {
         {/* Logo Section for Mobile */}
         <div className="md:hidden flex justify-center mb-6">
           <Image
-            src="/nexcore-logo-pc.jpg"
+            src="/nexcore-logo-pc.png"
             alt="Nexcore Logo"
             width={160}
             height={40}

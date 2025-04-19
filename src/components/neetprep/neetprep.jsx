@@ -79,6 +79,9 @@ const NeetPrep = () => {
         allocatedQuestions: allocatedQuestions,
       };
 
+      // Store the subject in localStorage to filter questions later
+      localStorage.setItem("selectedSubject", subject);
+
       // Store the object as a JSON string in localStorage
       localStorage.setItem("startTest", JSON.stringify(startTestData));
 
@@ -126,11 +129,10 @@ const NeetPrep = () => {
             {Object.keys(subjectUnits || {}).map((subject) => (
               <motion.div
                 key={subject}
-                className={`px-6 py-2 rounded-lg border text-center cursor-pointer ${
-                  selectedSubjects.includes(subject)
+                className={`px-6 py-2 rounded-lg border text-center cursor-pointer ${selectedSubjects.includes(subject)
                     ? "bg-blue-100 border-blue-500 text-blue-700 font-semibold"
                     : "border-gray-300 text-gray-700"
-                }`}
+                  }`}
                 whileHover={{ scale: 1.05 }}
                 onClick={() => handleSubjectToggle(subject)}
               >

@@ -16,10 +16,14 @@ import {
   FiLogOut,
 } from "react-icons/fi";
 import { MdLeaderboard, MdAnalytics } from "react-icons/md"; // New Icons for Leaderboard & Analytics
+import axios from "axios";
 
 const ToggleBar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [profileImage, setProfileImage] = useState("/profile.png");
+  const [profileMenu, setProfileMenu] = useState(false);
   const menuRef = useRef(null);
+  const profileRef = useRef(null);
   const router = useRouter();
 
   // Close menu when clicking outside
@@ -27,6 +31,9 @@ const ToggleBar = () => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
         setMenuOpen(false);
+      }
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
+        setProfileMenu(false);
       }
     };
 
@@ -38,6 +45,36 @@ const ToggleBar = () => {
 
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [menuOpen]);
+
+  // Fetch profile image from the backend API
+  useEffect(() => {
+    const fetchProfileImage = async () => {
+      try {
+        const authToken = localStorage.getItem("authToken");
+        if (!authToken) {
+          router.push("/login");
+          return;
+        }
+
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_BASE_URL}/students/getdata`, {
+          headers: { Authorization: `Bearer ${authToken}` },
+        });
+
+        if (response.status === 200 && response.data.profileImage) {
+          setProfileImage(response.data.profileImage); // Set the profile image from backend
+        }
+      } catch (error) {
+        console.error("Error fetching profile image:", error);
+      }
+    };
+
+    fetchProfileImage();
+  }, [router]);
+
+  // Toggle Profile Dropdown
+  const toggleProfileMenu = () => {
+    setProfileMenu(!profileMenu);
+  };
 
   return (
     <div>
@@ -53,12 +90,29 @@ const ToggleBar = () => {
           <h1 className="text-lg font-semibold text-gray-700">Overview</h1>
 
           {/* Profile Picture */}
-          <div className="w-8 h-8 rounded-full overflow-hidden">
+          <div className="w-8 h-8 rounded-full overflow-hidden" ref={profileRef} onClick={toggleProfileMenu}>
             <img
-              src="/profile.png"
+              src={profileImage}
               alt="Profile"
               className="w-full h-full object-cover"
             />
+            {/* Profile Dropdown */}
+            {profileMenu && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-50">
+                <button
+                  onClick={() => router.push("/personaldata")}
+                  className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100 w-full"
+                >
+                  Personal Data
+                </button>
+                <button
+                  onClick={() => router.push("/login")}
+                  className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100 w-full"
+                >
+                  Log Out
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -66,16 +120,6 @@ const ToggleBar = () => {
         <div className="w-full flex justify-center p-1 mt-3">
           <div className="w-full max-w-screen-lg flex items-center h-[50px] mx-3">
             {/* Search Input */}
-            <div className="flex items-center bg-gray-200 h-9 rounded-full flex-grow">
-              <button className="pl-5 text-gray-400">
-                <FiSearch size={20} />
-              </button>
-              <input
-                type="text"
-                placeholder="Search for something"
-                className="flex-grow p-2 text-sm bg-transparent focus:outline-none rounded-full"
-              />
-            </div>
           </div>
         </div>
       </div>
@@ -96,7 +140,7 @@ const ToggleBar = () => {
           <div className="flex flex-col items-center py-4 border-b">
             <div className="w-16 h-16 rounded-full overflow-hidden mb-2">
               <img
-                src="/profile.png"
+                src={profileImage}
                 alt="Profile"
                 className="w-full h-full object-cover"
               />
@@ -107,17 +151,11 @@ const ToggleBar = () => {
 
           {/* Menu Items */}
           <div className="mt-10 space-y-6">
-            {[
-              { name: "Home", path: "/", icon: <FiHome /> },
-              { name: "Goal Set Up", path: "/goalsetup", icon: <FiTarget /> },
-
-              { name: "Result", path: "/result", icon: <FiBarChart /> },
-              { name: "Analytics", path: "/analytics", icon: <MdAnalytics /> }, // New Analytics Entry
-              {
-                name: "Leaderboard",
-                path: "/leaderboard",
-                icon: <MdLeaderboard />,
-              },
+            {[{ name: "Home", path: "/", icon: <FiHome /> },
+              { name: "Exam Plan", path: "/examplan", icon: <FiTarget /> },
+              { name: "Result", path: "/pasttest", icon: <FiBarChart /> },
+              { name: "Analytics", path: "/analytics", icon: <MdAnalytics /> }, 
+              { name: "Leaderboard", path: "/result", icon: <MdLeaderboard /> },
               { name: "Colleges", path: "/colleges", icon: <FiBook /> },
               { name: "Logout", path: "/login", icon: <FiLogOut /> },
             ].map((item) => (

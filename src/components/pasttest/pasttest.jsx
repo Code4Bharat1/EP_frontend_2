@@ -34,7 +34,7 @@ const PastTest = () => {
       try {
         const token = localStorage.getItem("authToken"); // Assuming you store the JWT token in localStorage
         const response = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/pasttest`,
+          `${process.env.NEXT_PUBLIC_API_BASE_URL}/test/pasttest`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
