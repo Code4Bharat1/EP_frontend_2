@@ -22,6 +22,8 @@ const ToggleBar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileImage, setProfileImage] = useState("/profile.png");
   const [profileMenu, setProfileMenu] = useState(false);
+  const [firstName, setFirstName] = useState("");
+  const [email, setEmail] = useState("");
   const menuRef = useRef(null);
   const profileRef = useRef(null);
   const router = useRouter();
@@ -60,8 +62,10 @@ const ToggleBar = () => {
           headers: { Authorization: `Bearer ${authToken}` },
         });
 
-        if (response.status === 200 && response.data.profileImage) {
+        if (response.status === 200 && response.data.profileImage && response.data.firstName && response.data.emailAddress) {
           setProfileImage(response.data.profileImage); // Set the profile image from backend
+          setFirstName(response.data.firstName);
+          setEmail(response.data.emailAddress);
         }
       } catch (error) {
         console.error("Error fetching profile image:", error);
@@ -145,8 +149,8 @@ const ToggleBar = () => {
                 className="w-full h-full object-cover"
               />
             </div>
-            <h2 className="text-lg font-semibold">Basim Thakur</h2>
-            <p className="text-sm text-gray-500">basimthakur@gmail.com</p>
+            <h2 className="text-lg font-semibold">{firstName}</h2>
+            <p className="text-sm text-gray-500">{email}</p>
           </div>
 
           {/* Menu Items */}
@@ -155,7 +159,7 @@ const ToggleBar = () => {
               { name: "Exam Plan", path: "/examplan", icon: <FiTarget /> },
               { name: "Result", path: "/pasttest", icon: <FiBarChart /> },
               { name: "Analytics", path: "/analytics", icon: <MdAnalytics /> }, 
-              { name: "Leaderboard", path: "/result", icon: <MdLeaderboard /> },
+              // { name: "Leaderboard", path: "/result", icon: <MdLeaderboard /> },
               { name: "Colleges", path: "/colleges", icon: <FiBook /> },
               { name: "Logout", path: "/login", icon: <FiLogOut /> },
             ].map((item) => (

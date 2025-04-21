@@ -58,12 +58,12 @@ const Sidebar = ({ isOpen }) => {
               <span className="text-md">Analytics</span>
             </Link>
           </li>
-          <li className="hover:text-gray-200">
-            <Link href="/result" className="flex items-center space-x-3">
-              <FaMedal className="text-lg" /> {/* ✅ Updated for Leaderboard */}
-              <span className="text-md">Leaderboard</span>
-            </Link>
-          </li>
+          {/* <li className="hover:text-gray-200"> */}
+            {/* <Link href="/result" className="flex items-center space-x-3"> */}
+              {/* <FaMedal className="text-lg" /> ✅ Updated for Leaderboard */}
+              {/* <span className="text-md">Leaderboard</span> */}
+            {/* </Link> */}
+          {/* </li> */}
           <li className="hover:text-gray-200">
             <Link href="/colleges" className="flex items-center space-x-3">
               <FaUniversity className="text-lg" />
