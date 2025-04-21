@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import axios from "axios"; // Axios to fetch the data from the backend
 
+
 const RecentTestReportCard = ({ filterType }) => {
   const [testData, setTestData] = useState([]);
   const [overallMarks, setOverallMarks] = useState(0);
@@ -15,14 +16,29 @@ const RecentTestReportCard = ({ filterType }) => {
 
   // Check if we are on the client side before accessing localStorage
   useEffect(() => {
-    setIsClient(true); // Set to true once the component has mounted
-    const storedStudentId = localStorage.getItem("studentId");
-    if (storedStudentId) {
-      setStudentId(storedStudentId);
+    setIsClient(true); // Enable client-side rendering
+    const authToken = localStorage.getItem("authToken");
+  
+    if (authToken) {
+      try {
+        // Decode the payload part of the JWT (middle section)
+        const base64Payload = authToken.split('.')[1];
+        const decodedPayload = JSON.parse(atob(base64Payload)); // Decode base64 → JSON
+        const extractedId = decodedPayload.id;
+  
+        if (extractedId) {
+          setStudentId(extractedId);
+        } else {
+          console.error("Student ID not found in token.");
+        }
+      } catch (err) {
+        console.error("Error decoding authToken:", err);
+      }
     } else {
-      console.error("Student ID is missing in localStorage");
+      console.error("authToken missing in localStorage");
     }
-  }, []); // Empty dependency array ensures this runs only once after mounting
+  }, []);
+  
 
   useEffect(() => {
     if (!studentId) {
