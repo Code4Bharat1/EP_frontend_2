@@ -201,9 +201,11 @@ const TestInterface = () => {
         });
       }
     } catch (error) {
-      console.error(
+      toast.error(
         "❌ Error submitting test:",
-        error.response?.data || error.message
+        error.response?.data || error.message,{
+          duration: 5000
+        }
       );
       toast.error(`Error: ${error.response?.data?.error || "Something went wrong"}`,{
         duration: 5000

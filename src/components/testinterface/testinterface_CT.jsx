@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { TfiTimer } from "react-icons/tfi";
 import { FaFlask, FaAtom, FaDna } from "react-icons/fa";
+import toast from "react-hot-toast";
 
 const subjects = [
   { name: "Physics", icon: <FaAtom className="text-lg text-blue-500" /> },
@@ -345,10 +346,15 @@ const TestInterface = () => {
         }
       );
   
-      alert(response.data.message);
+      toast.success(response.data.message,{
+        duration: 5000
+      });
+
       window.location.href = "/resultCT";
     } catch (error) {
-      alert("Error submitting test!");
+      toast.error("Error submitting test!",{
+        duration: 5000
+      });
       console.error(error);
     }
   };

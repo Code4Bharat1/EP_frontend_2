@@ -4,6 +4,7 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
+import toast from "react-hot-toast";
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -28,11 +29,15 @@ const Login = () => {
         `${process.env.NEXT_PUBLIC_API_BASE_URL}/students/login`,
         { emailAddress: formData.email, password: formData.password }
       );
-      console.log("i ran")
       localStorage.setItem("authToken", response.data.token);
+      toast.success("✅ Login Successfully!!",{
+        duration: 5000
+      });
       router.push("/dashboard"); // Redirect to dashboard after successful login
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to login.");
+      toast.error(err.response?.data?.message || "Failed to login.",{
+        duration: 5000
+      });
     } finally {
       setLoading(false);
     }
@@ -147,20 +152,6 @@ const Login = () => {
             {loading ? "Logging in..." : "Log In"}
           </button>
         </form>
-
-        {/* Signup Link */}
-        <div className="mt-8 text-center">
-          <p className="text-sm text-gray-600 font-bold">
-            Don’t have an account?{" "}
-            <a
-              href="#"
-              onClick={() => router.push("/signup")}
-              className="font-semibold text-[#53ADD3] hover:text-[#3e9ec7] transition-all"
-            >
-              Sign up now
-            </a>
-          </p>
-        </div>
 
         {/* Error Message */}
         {error && <p className="text-red-500 text-sm text-center">{error}</p>}

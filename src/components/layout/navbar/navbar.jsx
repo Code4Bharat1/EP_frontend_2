@@ -9,6 +9,7 @@ import {
 } from "react-icons/io5";
 import { MdAccountCircle, MdLogout } from "react-icons/md";
 import axios from "axios";
+import Link from "next/link";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -175,7 +176,7 @@ const NavBar = () => {
                       key={index}
                       className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
                     >
-                      {notification}
+                      <Link href="/testselection">{notification}</Link>
                     </li>
                   ))
                 )}
