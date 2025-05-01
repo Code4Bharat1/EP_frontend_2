@@ -2,7 +2,6 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { IoCameraOutline } from "react-icons/io5";
-import Select from "react-select";
 import axios from "axios";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -13,12 +12,12 @@ const PersonalData = () => {
     firstName: "",
     lastName: "",
     examType: "",
-    language: [],
+    gender: "",
     dateOfBirth: "",
-    email: "",
-    country: "",
-    state: "",
-    city: "",
+    emailAddress: "",
+    targetYear: "",
+    domicileState: "",
+    mobileNumber: "",
     fullAddress: "",
   });
 
@@ -26,16 +25,12 @@ const PersonalData = () => {
   const [isEditable, setIsEditable] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
-  const [isDataFilled, setIsDataFilled] = useState(false);
 
   useEffect(() => {
     const fetchPersonalData = async () => {
       try {
         const authToken = localStorage.getItem("authToken");
-        if (!authToken) {
-          router.push("/login");
-          return;
-        }
+        if (!authToken) return;
 
         const response = await axios.get(`${apiBaseUrl}/students/getdata`, {
           headers: { Authorization: `Bearer ${authToken}` },
@@ -43,25 +38,21 @@ const PersonalData = () => {
 
         if (response.status === 200) {
           const userData = response.data;
-
           setFormData({
             firstName: userData.firstName || "",
             lastName: userData.lastName || "",
-            email: userData.emailAddress || "",
+            emailAddress: userData.emailAddress || "",
             examType: userData.examType || "",
-            language: userData.language
-              ? userData.language.map((lang) => ({ value: lang, label: lang }))
-              : [],
+            gender: userData.gender || "",
             dateOfBirth: userData.dateOfBirth || "",
-            country: userData.domicileState || "",
-            state: userData.location || "",
-            city: userData.city || "",
+            targetYear: userData.targetYear || "",
+            domicileState: userData.domicileState || "",
+            mobileNumber: userData.mobileNumber || "",
             fullAddress: userData.fullAddress || "",
           });
+          
           const storedImage = localStorage.getItem("profileImage");
-          setProfileImage(
-            storedImage || userData.profileImage || "/profile.jpg"
-          );
+          setProfileImage(storedImage || userData.profileImage || "/profile.jpg");
         }
       } catch (error) {
         console.error("Error fetching personal data:", error);
@@ -70,56 +61,56 @@ const PersonalData = () => {
     fetchPersonalData();
   }, []);
 
-  // Handle input change
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
-  // Handle language selection
-  const handleLanguageChange = (selectedOptions) => {
-    setFormData((prev) => ({ ...prev, language: selectedOptions }));
-  };
-  // Handling Good Images. 
+
   const handleImageChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    
     const reader = new FileReader();
-    reader.readAsDataURL(file);
     reader.onload = () => {
       localStorage.setItem("profileImage", reader.result);
+      setProfileImage(reader.result);
     };
-    setProfileImage(file);
+    reader.readAsDataURL(file);
   };
-  //saving data.
+
   const handleUpdateClick = async () => {
     setIsUpdating(true);
     try {
       const authToken = localStorage.getItem("authToken");
       if (!authToken) {
-        router.push("/login");
+        console.error("No auth token found");
         return;
       }
+  
       const formDataToSend = new FormData();
+      
+      // Append all fields with correct backend mapping
       formDataToSend.append("firstName", formData.firstName);
       formDataToSend.append("lastName", formData.lastName);
       formDataToSend.append("examType", formData.examType);
       formDataToSend.append("dateOfBirth", formData.dateOfBirth);
-      formDataToSend.append("emailAddress", formData.email);
-      formDataToSend.append("state", formData.state);
-      formDataToSend.append("city", formData.city);
+      formDataToSend.append("state", formData.domicileState); // Maps to domicileState
+      formDataToSend.append("country", formData.targetYear); // Maps to targetYear
+      formDataToSend.append("city", formData.mobileNumber); // Maps to mobileNumber
+      formDataToSend.append("language", formData.gender); // Maps to gender
+      formDataToSend.append("email", formData.emailAddress); // Maps to emailAddress
       formDataToSend.append("fullAddress", formData.fullAddress);
-
-      // Convert selected languages to JSON format
-      formDataToSend.append(
-        "language",
-        JSON.stringify(formData.language.map((lang) => lang.value))
-      );
-
-      // Only append profileImage if user uploads a new one
+  
+      // Only append profileImage if it's a new file
       if (profileImage && typeof profileImage !== "string") {
         formDataToSend.append("profileImage", profileImage);
       }
-
+  
+      console.log("Sending form data:");
+      for (let [key, value] of formDataToSend.entries()) {
+        console.log(key, value);
+      }
+  
       const response = await axios.post(
         `${apiBaseUrl}/students/adddata`,
         formDataToSend,
@@ -130,35 +121,42 @@ const PersonalData = () => {
           },
         }
       );
-
+  
       if (response.status === 200) {
         setShowPopup(true);
         setIsEditable(false);
         setTimeout(() => setShowPopup(false), 3000);
-        router.push("/dashboard");
+        
+        // Update local storage with new image if uploaded
+        if (profileImage && typeof profileImage !== "string") {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            localStorage.setItem("profileImage", e.target.result);
+          };
+          reader.readAsDataURL(profileImage);
+        }
       }
     } catch (error) {
       console.error("Error updating personal data:", error);
+      if (error.response) {
+        console.error("Server responded with:", error.response.data);
+      }
+      alert(`Update failed: ${error.message}`);
     } finally {
       setIsUpdating(false);
     }
   };
-
-
   return (
     <div className="p-6 w-full relative">
       {/* Profile Section */}
       <div className="flex justify-between items-center mb-6">
-        {/* Profile Details */}
         <div className="flex items-center space-x-4">
           <div className="relative w-24 h-24 rounded-full overflow-hidden border border-gray-300">
-            {/* Profile Image */}
             <img
-              src={profileImage || "/profile.jpg"} // Use profile image from backend, fallback to default
+              src={profileImage}
               alt="Profile"
               className="w-full h-full object-cover"
             />
-            {/* Camera Icon */}
             {isEditable && (
               <label className="absolute bottom-2 right-2 bg-white p-1 rounded-full cursor-pointer shadow-md">
                 <IoCameraOutline className="text-gray-700 text-xl" />
@@ -166,30 +164,26 @@ const PersonalData = () => {
                   type="file"
                   className="hidden"
                   onChange={handleImageChange}
+                  accept="image/*"
                 />
               </label>
             )}
           </div>
-          {/* Name & Email */}
           <div>
             <h2 className="text-xl font-bold">Dear, {formData.firstName} {formData.lastName} 👨🏻‍🦱</h2>
-            <p className="text-gray-500">{formData.email}</p>
+            <p className="text-gray-500">{formData.emailAddress}</p>
           </div>
         </div>
-        {/* Edit / Update Button */}
         <button
           onClick={!isEditable ? () => setIsEditable(true) : handleUpdateClick}
           className={`px-6 py-2 rounded text-white font-medium ${
-            isEditable
-              ? "bg-[#0077B6] hover:bg-[#498fb5]"
-              : "bg-[#45A4CE] hover:bg-[#3589ac]"
+            isEditable ? "bg-[#0077B6] hover:bg-[#498fb5]" : "bg-[#45A4CE] hover:bg-[#3589ac]"
           }`}
         >
           {isUpdating ? "Updating..." : isEditable ? "Update" : "Edit"}
         </button>
       </div>
 
-      {/* Image Upload Guidelines - Visible Only in Edit Mode */}
       {isEditable && (
         <p className="text-sm text-gray-500 my-4">
           Format should be in <b>.jpeg, .png</b> at least <b>800x800px</b> and
@@ -197,14 +191,12 @@ const PersonalData = () => {
         </p>
       )}
 
-      {/* Pop-up Notification After Update */}
       {showPopup && (
         <div className="absolute top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg">
           ✅ Updated Successfully!
         </div>
       )}
 
-      {/* Personal Details Form */}
       <form>
         <div className="grid gap-6 mb-6 md:grid-cols-2">
           <InputField
@@ -225,39 +217,45 @@ const PersonalData = () => {
             onChange={handleChange}
             isEditable={isEditable}
           />
-          <SelectField
-            label="Exam Type"
-            name="examType"
-            options={["JEE", "NEET", "Both"]}
-            value={formData.examType}
-            onChange={handleChange}
-            isEditable={isEditable}
-          />
-          <InputField
-            label="Email Address"
-            name="email"
-            type="email"
-            placeholder="example@gmail.com"
-            value={formData.email}
-            onChange={handleChange}
-            isEditable={isEditable}
-          />
+          
           <div>
             <label className="block mb-2 text-sm font-medium text-gray-900">
-              Language
+              Exam Type
             </label>
-            <Select
-              isMulti
-              options={[
-                { value: "English", label: "English" },
-                { value: "Hindi", label: "Hindi" },
-              ]}
-              value={formData.language}
-              onChange={handleLanguageChange}
-              isDisabled={!isEditable}
-              className="w-full focus:ring-[#45A4CE]"
-            />
+            <select
+              name="examType"
+              value={formData.examType}
+              onChange={handleChange}
+              disabled={!isEditable}
+              className="bg-[#F9F9F9] border-none text-gray-900 text-sm rounded-lg focus:ring-[#45A4CE] focus:border-[#45A4CE] block w-full p-2.5"
+            >
+              <option value="">Select exam type</option>
+              <option value="JEE">JEE</option>
+              <option value="NEET">NEET</option>
+              <option value="Both">Both</option>
+            </select>
           </div>
+
+          <InputField
+            label="Email Address"
+            name="emailAddress"
+            type="email"
+            placeholder="example@example.com"
+            value={formData.emailAddress}
+            onChange={handleChange}
+            isEditable={isEditable}
+          />
+
+          <InputField
+            label="Gender"
+            name="gender"
+            type="text"
+            placeholder="Male/Female/Other"
+            value={formData.gender}
+            onChange={handleChange}
+            isEditable={isEditable}
+          />
+
           <InputField
             label="Date of Birth"
             name="dateOfBirth"
@@ -266,68 +264,56 @@ const PersonalData = () => {
             onChange={handleChange}
             isEditable={isEditable}
           />
+
+          <InputField
+            label="Target Year"
+            name="targetYear"
+            type="text"
+            placeholder="2024"
+            value={formData.targetYear}
+            onChange={handleChange}
+            isEditable={isEditable}
+          />
+
+          <InputField
+            label="State (Domicile)"
+            name="domicileState"
+            type="text"
+            placeholder="Maharashtra"
+            value={formData.domicileState}
+            onChange={handleChange}
+            isEditable={isEditable}
+          />
+
+          <InputField
+            label="Mobile Number"
+            name="mobileNumber"
+            type="tel"
+            placeholder="9876543210"
+            value={formData.mobileNumber}
+            onChange={handleChange}
+            isEditable={isEditable}
+          />
         </div>
 
-        {/* Address Section */}
         <div className="mt-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-1">Address</h2>
           <p className="text-gray-500 mb-6">Your current domicile</p>
-          <div className="grid gap-6 mb-6 md:grid-cols-2">
-            <SelectField
-              label="Country"
-              name="country"
-              options={["India", "USA", "UK"]}
-              value={formData.country}
-              onChange={handleChange}
-              isEditable={isEditable}
-            />
-            <SelectField
-              label="State"
-              name="state"
-              options={
-                formData.country === "India" ? ["Maharashtra", "Karnataka"] : []
-              }
-              value={formData.state}
-              onChange={handleChange}
-              isEditable={isEditable}
-              disabled={!formData.country}
-            />
-            <SelectField
-              label="City"
-              name="city"
-              options={
-                formData.state === "Maharashtra" ? ["Mumbai", "Pune"] : []
-              }
-              value={formData.city}
-              onChange={handleChange}
-              isEditable={isEditable}
-              disabled={!formData.state}
-            />
-            <TextAreaField
-              label="Full Address"
-              name="fullAddress"
-              placeholder="Enter your full address"
-              value={formData.fullAddress}
-              onChange={handleChange}
-              isEditable={isEditable}
-            />
-          </div>
+          <TextAreaField
+            label="Full Address"
+            name="fullAddress"
+            placeholder="Enter your full address"
+            value={formData.fullAddress}
+            onChange={handleChange}
+            isEditable={isEditable}
+          />
         </div>
       </form>
     </div>
   );
 };
 
-/* Reusable Components */
-const InputField = ({
-  label,
-  name,
-  type,
-  placeholder,
-  value,
-  onChange,
-  isEditable,
-}) => (
+const InputField = ({ label, name, type, placeholder, value, onChange, isEditable }) => (
   <div>
     <label className="block mb-2 text-sm font-medium text-gray-900">
       {label}
@@ -344,9 +330,21 @@ const InputField = ({
   </div>
 );
 
-const SelectField = InputField;
-const TextAreaField = InputField;
+const TextAreaField = ({ label, name, placeholder, value, onChange, isEditable }) => (
+  <div>
+    <label className="block mb-2 text-sm font-medium text-gray-900">
+      {label}
+    </label>
+    <textarea
+      name={name}
+      placeholder={placeholder}
+      value={value}
+      onChange={onChange}
+      disabled={!isEditable}
+      rows={3}
+      className="bg-[#F9F9F9] border-none text-gray-900 text-sm rounded-lg focus:ring-[#45A4CE] focus:border-[#45A4CE] block w-full p-2.5"
+    />
+  </div>
+);
 
 export default PersonalData;
-
-
