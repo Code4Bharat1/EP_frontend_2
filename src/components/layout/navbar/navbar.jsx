@@ -21,7 +21,7 @@ const NavBar = () => {
   const profileRef = useRef(null);
   const notificationsRef = useRef(null);
 
-  const [profileImage, setProfileImage] = useState("/profile.png");
+  const [profileImage, setProfileImage] = useState("/profile.jpg");
   const [notifications, setNotifications] = useState([]);
 
   // Fetch profile image from the backend API

@@ -15,7 +15,7 @@ const GetCertified = () => {
   }, []);
 
   const handleGetStarted = () => {
-    router.push('/signup'); // Navigate to signup page
+    router.push('/login'); // Navigate to signup page
   };
 
   const handleBack = () => {
