@@ -10,7 +10,7 @@ const PersonalData = () => {
   const router = useRouter();
   const [formData, setFormData] = useState({
     id: "",
-    updatedProfileImage : "",
+    updatedProfileImage: "",
     firstName: "",
     lastName: "",
     examType: "",
@@ -37,11 +37,11 @@ const PersonalData = () => {
         const response = await axios.get(`${apiBaseUrl}/students/getdata`, {
           headers: { Authorization: `Bearer ${authToken}` },
         });
-        
+
         if (response.status === 200) {
           const userData = response.data;
           setFormData({
-            id : authToken,
+            id: authToken,
             firstName: userData.firstName || "",
             lastName: userData.lastName || "",
             emailAddress: userData.emailAddress || "",
@@ -53,9 +53,9 @@ const PersonalData = () => {
             mobileNumber: userData.mobileNumber || "",
             fullAddress: userData.fullAddress || "",
           });
-          
+
           console.log(formData);
-          
+
           setProfileImage(userData.profileImage || "/profile.jpg");
         }
       } catch (error) {
@@ -73,7 +73,7 @@ const PersonalData = () => {
   const handleImageChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    
+
     const reader = new FileReader();
     reader.onload = () => {
       localStorage.setItem("profileImage", reader.result);
@@ -90,32 +90,33 @@ const PersonalData = () => {
         console.error("No auth token found");
         return;
       }
-  
+
       // Decode the JWT token to get the student ID
       const decodeJWT = (token) => {
         try {
-          const base64Url = token.split('.')[1];
-          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+          const base64Url = token.split(".")[1];
+          const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
           return JSON.parse(atob(base64));
         } catch (error) {
           console.error("Error decoding JWT:", error);
           return null;
         }
       };
-  
+
       const decodedToken = decodeJWT(authToken);
       const studentId = decodedToken?.id; // Adjust based on your JWT structure
-  
+
       if (!studentId) {
         throw new Error("Unable to decode student ID from token");
       }
-  
+
       // Get profile image from localStorage or state
-      const updatedProfileImage = localStorage.getItem("profileImage") || profileImage;
-  
+      const updatedProfileImage =
+        localStorage.getItem("profileImage") || profileImage;
+
       // Prepare the data to send
       const requestData = {
-        id: studentId, 
+        id: studentId,
         updatedImageUrl: updatedProfileImage,
         firstName: formData.firstName,
         lastName: formData.lastName,
@@ -129,20 +130,19 @@ const PersonalData = () => {
         fullAddress: formData.fullAddress,
       };
 
-  
-      console.log("Sending data:", requestData);
-  
+      console.log("Sending data :", requestData);
+
       const response = await axios.post(
-        `http://localhost:3085/api/students/newdata`, 
+        `${apiBaseUrl}/students/newdata`,
         requestData,
         {
           headers: {
             Authorization: `Bearer ${authToken}`,
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
         }
       );
-  
+
       if (response.status === 200) {
         setShowPopup(true);
         setIsEditable(false);
@@ -155,7 +155,6 @@ const PersonalData = () => {
       setIsUpdating(false);
     }
   };
-
 
   return (
     <div className="p-6 w-full relative">
@@ -181,14 +180,18 @@ const PersonalData = () => {
             )}
           </div>
           <div>
-            <h2 className="text-xl font-bold">Dear, {formData.firstName} {formData.lastName} 👨🏻‍🦱</h2>
+            <h2 className="text-xl font-bold">
+              Dear, {formData.firstName} {formData.lastName} 👨🏻‍🦱
+            </h2>
             <p className="text-gray-500">{formData.emailAddress}</p>
           </div>
         </div>
         <button
           onClick={!isEditable ? () => setIsEditable(true) : handleUpdateClick}
           className={`px-6 py-2 rounded text-white font-medium ${
-            isEditable ? "bg-[#0077B6] hover:bg-[#498fb5]" : "bg-[#45A4CE] hover:bg-[#3589ac]"
+            isEditable
+              ? "bg-[#0077B6] hover:bg-[#498fb5]"
+              : "bg-[#45A4CE] hover:bg-[#3589ac]"
           }`}
         >
           {isUpdating ? "Updating..." : isEditable ? "Update" : "Edit"}
@@ -228,7 +231,7 @@ const PersonalData = () => {
             onChange={handleChange}
             isEditable={isEditable}
           />
-          
+
           <div>
             <label className="block mb-2 text-sm font-medium text-gray-900">
               Exam Type
@@ -324,7 +327,15 @@ const PersonalData = () => {
   );
 };
 
-const InputField = ({ label, name, type, placeholder, value, onChange, isEditable }) => (
+const InputField = ({
+  label,
+  name,
+  type,
+  placeholder,
+  value,
+  onChange,
+  isEditable,
+}) => (
   <div>
     <label className="block mb-2 text-sm font-medium text-gray-900">
       {label}
@@ -341,7 +352,14 @@ const InputField = ({ label, name, type, placeholder, value, onChange, isEditabl
   </div>
 );
 
-const TextAreaField = ({ label, name, placeholder, value, onChange, isEditable }) => (
+const TextAreaField = ({
+  label,
+  name,
+  placeholder,
+  value,
+  onChange,
+  isEditable,
+}) => (
   <div>
     <label className="block mb-2 text-sm font-medium text-gray-900">
       {label}
