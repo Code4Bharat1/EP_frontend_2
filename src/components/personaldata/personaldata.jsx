@@ -9,6 +9,8 @@ const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 const PersonalData = () => {
   const router = useRouter();
   const [formData, setFormData] = useState({
+    id: "",
+    updatedProfileImage : "",
     firstName: "",
     lastName: "",
     examType: "",
@@ -35,10 +37,11 @@ const PersonalData = () => {
         const response = await axios.get(`${apiBaseUrl}/students/getdata`, {
           headers: { Authorization: `Bearer ${authToken}` },
         });
-
+        
         if (response.status === 200) {
           const userData = response.data;
           setFormData({
+            id : authToken,
             firstName: userData.firstName || "",
             lastName: userData.lastName || "",
             emailAddress: userData.emailAddress || "",
@@ -51,8 +54,9 @@ const PersonalData = () => {
             fullAddress: userData.fullAddress || "",
           });
           
-          const storedImage = localStorage.getItem("profileImage");
-          setProfileImage(storedImage || userData.profileImage || "/profile.jpg");
+          console.log(formData);
+          
+          setProfileImage(userData.profileImage || "/profile.jpg");
         }
       } catch (error) {
         console.error("Error fetching personal data:", error);
@@ -87,37 +91,54 @@ const PersonalData = () => {
         return;
       }
   
-      const formDataToSend = new FormData();
-      
-      // Append all fields with correct backend mapping
-      formDataToSend.append("firstName", formData.firstName);
-      formDataToSend.append("lastName", formData.lastName);
-      formDataToSend.append("examType", formData.examType);
-      formDataToSend.append("dateOfBirth", formData.dateOfBirth);
-      formDataToSend.append("state", formData.domicileState); // Maps to domicileState
-      formDataToSend.append("country", formData.targetYear); // Maps to targetYear
-      formDataToSend.append("city", formData.mobileNumber); // Maps to mobileNumber
-      formDataToSend.append("language", formData.gender); // Maps to gender
-      formDataToSend.append("email", formData.emailAddress); // Maps to emailAddress
-      formDataToSend.append("fullAddress", formData.fullAddress);
+      // Decode the JWT token to get the student ID
+      const decodeJWT = (token) => {
+        try {
+          const base64Url = token.split('.')[1];
+          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+          return JSON.parse(atob(base64));
+        } catch (error) {
+          console.error("Error decoding JWT:", error);
+          return null;
+        }
+      };
   
-      // Only append profileImage if it's a new file
-      if (profileImage && typeof profileImage !== "string") {
-        formDataToSend.append("profileImage", profileImage);
+      const decodedToken = decodeJWT(authToken);
+      const studentId = decodedToken?.id; // Adjust based on your JWT structure
+  
+      if (!studentId) {
+        throw new Error("Unable to decode student ID from token");
       }
   
-      console.log("Sending form data:");
-      for (let [key, value] of formDataToSend.entries()) {
-        console.log(key, value);
-      }
+      // Get profile image from localStorage or state
+      const updatedProfileImage = localStorage.getItem("profileImage") || profileImage;
+  
+      // Prepare the data to send
+      const requestData = {
+        id: studentId, 
+        updatedImageUrl: updatedProfileImage,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        examType: formData.examType,
+        dateOfBirth: formData.dateOfBirth,
+        domicileState: formData.domicileState,
+        targetYear: formData.targetYear,
+        mobileNumber: formData.mobileNumber,
+        gender: formData.gender,
+        emailAddress: formData.emailAddress,
+        fullAddress: formData.fullAddress,
+      };
+
+  
+      console.log("Sending data:", requestData);
   
       const response = await axios.post(
-        `${apiBaseUrl}/students/adddata`,
-        formDataToSend,
+        `http://localhost:3085/api/students/newdata`, 
+        requestData,
         {
           headers: {
             Authorization: `Bearer ${authToken}`,
-            "Content-Type": "multipart/form-data",
+            'Content-Type': 'application/json',
           },
         }
       );
@@ -126,26 +147,16 @@ const PersonalData = () => {
         setShowPopup(true);
         setIsEditable(false);
         setTimeout(() => setShowPopup(false), 3000);
-        
-        // Update local storage with new image if uploaded
-        if (profileImage && typeof profileImage !== "string") {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            localStorage.setItem("profileImage", e.target.result);
-          };
-          reader.readAsDataURL(profileImage);
-        }
       }
     } catch (error) {
       console.error("Error updating personal data:", error);
-      if (error.response) {
-        console.error("Server responded with:", error.response.data);
-      }
       alert(`Update failed: ${error.message}`);
     } finally {
       setIsUpdating(false);
     }
   };
+
+
   return (
     <div className="p-6 w-full relative">
       {/* Profile Section */}

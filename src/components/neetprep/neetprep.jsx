@@ -4,6 +4,7 @@ import axios from "axios";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import Loading from "../Loading/Loading";
 
 const NeetPrep = () => {
   const [selectedSubjects, setSelectedSubjects] = useState([]);
@@ -97,7 +98,7 @@ const NeetPrep = () => {
   };
 
   if (loading) {
-    return <div className="text-center mt-10">Loading your plan...</div>;
+    return <div className="text-center mt-10"><Loading/></div>;
   }
 
   if (error) {

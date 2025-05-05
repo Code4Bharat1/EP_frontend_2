@@ -4,6 +4,7 @@ import axios from "axios";
 import { TfiTimer } from "react-icons/tfi";
 import { FaFlask, FaAtom, FaDna } from "react-icons/fa";
 import toast from "react-hot-toast";
+import Loading from "../Loading/Loading";
 
 const subjects = [
   { name: "Physics", icon: <FaAtom className="text-lg text-blue-500" /> },
@@ -300,7 +301,7 @@ const TestInterface = () => {
     
   
 
-  if (loading) return <p className="text-center text-xl">Loading questions...</p>;
+  if (loading) return <p className="text-center text-xl"><Loading/></p>;
   if (error) return <p className="text-center text-red-500">{error}</p>;
 
   return (
