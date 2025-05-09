@@ -9,6 +9,37 @@ const Hero = () => {
   const [lastName, setLastName] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [pendingData, setPendingData] = useState(0);
+
+  useEffect(()=>{
+    const fetchPendingTests = async () => {
+      try{
+        const token = localStorage.getItem("authToken"); // Get the token from localStorage
+        const response = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_BASE_URL}/dashboard/pending`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        // Filter the pending tests
+        const pendingTestsData = response.data.filter(
+          (test) => test.status === "pending"
+        );
+
+        let pendingtestlength = pendingTestsData.length;
+        setPendingData(pendingtestlength);
+        console.log(pendingtestlength);
+
+      }catch(error) {
+        console.error("Error Fetching pending test ", error);
+      }
+    }
+
+    fetchPendingTests();
+  },[])
 
   useEffect(() => {
     const fetchStudentName = async () => {
@@ -64,7 +95,7 @@ const Hero = () => {
             Welcome Back, {firstName} {lastName}!
           </h3>
           <p className="text-[10px] md:text-lg md:font-thin">
-            You have <strong>8+ pending tests</strong>, gear up and start
+            You have <strong className="font-bold">{pendingData}+ pending tests</strong>, gear up and start
             preparing now!
           </p>
         </div>

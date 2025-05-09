@@ -130,7 +130,7 @@ const NavBar = () => {
       {/* Right Section - Icons */}
       <div className="flex items-center space-x-5">
         {/* Light/Dark Mode Toggle */}
-        <div className="flex items-center space-x-2">
+        {/* <div className="flex items-center space-x-2">
           <IoSunnyOutline className="text-white text-2xl" />
           <label className="relative flex cursor-pointer items-center">
             <input
@@ -147,7 +147,7 @@ const NavBar = () => {
             </div>
           </label>
           <IoMoonOutline className="text-white text-2xl" />
-        </div>
+        </div> */}
 
         {/* Notifications */}
         <div className="relative cursor-pointer" ref={notificationsRef}>
@@ -186,10 +186,10 @@ const NavBar = () => {
         </div>
 
         {/* Settings */}
-        <IoSettingsOutline
+        {/* <IoSettingsOutline
           className="text-3xl text-white cursor-pointer"
           onClick={() => router.push("/settings")}
-        />
+        /> */}
 
         {/* Profile Dropdown */}
         <div className="relative" ref={profileRef}>

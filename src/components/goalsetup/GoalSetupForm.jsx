@@ -177,40 +177,52 @@ function GoalSetup() {
                 </div>
               </div>
               <div className="relative z-0 group mb-6 md:mb-12">
-                <input
-                  type="text"
-                  name="weak_subject"
-                  id="weak_subject"
-                  value={weakSubject}
-                  onChange={(e) => setWeakSubject(e.target.value)}
-                  className="block py-2.5 px-0 w-full text-sm md:text-lg text-gray-900 bg-transparent border-0 border-b-2 border-gray-300 appearance-none focus:outline-none focus:ring-0 focus:border-blue-600 peer"
-                  placeholder=" "
-                  required
-                />
-                <label
-                  htmlFor="weak_subject"
-                  className="absolute text-sm md:text-lg text-gray-500 duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] start-0 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6 peer-focus:text-blue-600"
-                >
-                  Weak Subject *
-                </label>
-              </div>
-              <div className="relative z-0 group mb-4 md:mb-12">
-                <input
-                  type="text"
-                  name="strong_subject"
-                  id="strong_subject"
-                  value={strongSubject}
-                  onChange={(e) => setStrongSubject(e.target.value)}
-                  className="block py-2.5 px-0 w-full text-sm md:text-lg text-gray-900 bg-transparent border-0 border-b-2 border-gray-300 appearance-none focus:outline-none focus:ring-0 focus:border-blue-600 peer"
-                  placeholder=" "
-                />
-                <label
-                  htmlFor="strong_subject"
-                  className="absolute text-sm md:text-lg text-gray-500 duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] start-0 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6 peer-focus:text-blue-600"
-                >
-                  Strong Subject
-                </label>
-              </div>
+            <select
+              name="weak_subject"
+              id="weak_subject"
+              value={weakSubject}
+              onChange={(e) => setWeakSubject(e.target.value)}
+              className="block w-full py-2.5 px-0 text-sm md:text-lg text-gray-900 bg-transparent border-0 border-b-2 border-gray-300 focus:outline-none focus:ring-0 focus:border-blue-600 peer"
+              required
+            >
+              <option value="" disabled>
+                Select Weak Subject *
+              </option>
+              <option value="Physics">Physics</option>
+              <option value="Chemistry">Chemistry</option>
+              <option value="Biology">Biology</option>
+            </select>
+            <label
+              htmlFor="weak_subject"
+              className="absolute text-sm md:text-lg text-gray-500 duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:scale-75 peer-focus:-translate-y-6 peer-focus:text-blue-600"
+            >
+              Weak Subject *
+            </label>
+          </div>
+
+          <div className="relative z-0 group mb-4 md:mb-12">
+            <select
+              name="strong_subject"
+              id="strong_subject"
+              value={strongSubject}
+              onChange={(e) => setStrongSubject(e.target.value)}
+              className="block w-full py-2.5 px-0 text-sm md:text-lg text-gray-900 bg-transparent border-0 border-b-2 border-gray-300 focus:outline-none focus:ring-0 focus:border-blue-600 peer"
+            >
+              <option value="" disabled>
+                Select Strong Subject
+              </option>
+              <option value="Physics">Physics</option>
+              <option value="Chemistry">Chemistry</option>
+              <option value="Biology">Biology</option>
+            </select>
+            <label
+              htmlFor="strong_subject"
+              className="absolute text-sm md:text-lg text-gray-500 duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:scale-75 peer-focus:-translate-y-6 peer-focus:text-blue-600"
+            >
+              Strong Subject
+            </label>
+          </div>
+
               <div className="flex justify-center items-center mt-6">
                 <button
                   type="submit"

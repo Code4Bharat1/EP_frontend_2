@@ -20,41 +20,54 @@ const ScheduledTestCard = () => {
   useEffect(() => {
     const fetchTests = async () => {
       try {
-        const res = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/newadmin/test-data`
+        // Get the JWT token from localStorage
+        const token = localStorage.getItem('authToken');
+        
+        if (!token) {
+          console.error('No token found');
+          return;
+        }
+  
+        // Decode the JWT to get student ID (assuming it's stored in the token)
+        const decodedToken = JSON.parse(atob(token.split('.')[1]));
+        const studentId = decodedToken.id; // Adjust this based on your JWT structure
+  
+        // Send request with studentId in the body
+        const res = await axios.post(
+          `${process.env.NEXT_PUBLIC_API_BASE_URL}/newadmin/test-data`,
+          { studentId } // Send studentId in the request body
         );
-
+  
         const rawTests = res.data.tests;
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-
+  
         const upcomingTests = rawTests
-        .map((test, index) => {
-          const testDate = new Date(test.exam_start_date);
-          testDate.setHours(0, 0, 0, 0);
-        
-          if (testDate < today) return null;
-        
-          return {
-            id: test.id, // ✅ include the test ID
-            name: test.testname,
-            questions: `${test.no_of_questions} QUESTIONS`,
-            date: testDate.toLocaleDateString("en-GB"),
-            rawDate: testDate,
-            isToday: testDate.getTime() === today.getTime(),
-            bgColor: bgColors[index % bgColors.length],
-          };
-        })
-        
+          .map((test, index) => {
+            const testDate = new Date(test.exam_start_date);
+            testDate.setHours(0, 0, 0, 0);
+          
+            if (testDate < today) return null;
+          
+            return {
+              id: test.id,
+              name: test.testname,
+              questions: `${test.no_of_questions} QUESTIONS`,
+              date: testDate.toLocaleDateString("en-GB"),
+              rawDate: testDate,
+              isToday: testDate.getTime() === today.getTime(),
+              bgColor: bgColors[index % bgColors.length],
+            };
+          })
           .filter(Boolean)
           .sort((a, b) => a.rawDate - b.rawDate);
-
+  
         setTests(upcomingTests);
       } catch (error) {
         console.error("Failed to fetch test data:", error);
       }
     };
-
+  
     fetchTests();
   }, []);
 

@@ -2,14 +2,14 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { TfiTimer } from "react-icons/tfi";
-import { FaFlask, FaAtom, FaDna } from "react-icons/fa";
+import { FaFlask, FaAtom, FaDna, FaClock, FaCheck, FaTimes, FaBookmark, FaChevronDown, FaChevronUp } from "react-icons/fa";
 import toast from "react-hot-toast";
 import Loading from "../Loading/Loading";
 
 const subjects = [
-  { name: "Physics", icon: <FaAtom className="text-lg text-blue-500" /> },
-  { name: "Chemistry", icon: <FaFlask className="text-lg text-green-500" /> },
-  { name: "Biology", icon: <FaDna className="text-lg text-red-500" /> },
+  { name: "Physics", icon: <FaAtom className="text-lg text-blue-500" />, questionCount: 45 },
+  { name: "Chemistry", icon: <FaFlask className="text-lg text-green-500" />, questionCount: 45 },
+  { name: "Biology", icon: <FaDna className="text-lg text-red-500" />, questionCount: 90 },
 ];
 
 const TestInterface = () => {
@@ -21,7 +21,17 @@ const TestInterface = () => {
   const [answers, setAnswers] = useState({});
   const [visitedQuestions, setVisitedQuestions] = useState({});
   const [markedForReview, setMarkedForReview] = useState({});
-  const [timer, setTimer] = useState(10800);
+  const [totalQuestionsBySubject, setTotalQuestionsBySubject] = useState({
+    Physics: 45,
+    Chemistry: 45,
+    Biology: 90
+  });
+  const [testName, setTestName] = useState("");
+  
+  // Calculate total time based on question count (1 min per question)
+  const totalQuestions = totalQuestionsBySubject.Physics + totalQuestionsBySubject.Chemistry + totalQuestionsBySubject.Biology;
+  const [timer, setTimer] = useState(totalQuestions * 60); // 1 minute per question
+  const [timeSpent, setTimeSpent] = useState({});
   
   useEffect(() => {
     const fetchQuestions = async () => {
@@ -47,6 +57,7 @@ const TestInterface = () => {
               ?.option_text,
           });
         });
+        
         setQuestionsData(subjectWiseQuestions);
         localStorage.setItem("testStartTime", new Date().toISOString());
         setLoading(false);
@@ -56,8 +67,10 @@ const TestInterface = () => {
         setLoading(false);
       }
     };
+    
     fetchQuestions();
   }, []);
+  
   useEffect(() => {
     const countdown = setInterval(() => {
       setTimer((prev) => {
@@ -69,8 +82,16 @@ const TestInterface = () => {
         return prev - 1;
       });
     }, 1000);
+    
     return () => clearInterval(countdown);
   }, []);
+
+  useEffect(()=>{
+    if(typeof window !== "undefined") {
+      const savedTestName = localStorage.getItem("testName");
+      if(savedTestName) setTestName(savedTestName);
+    }
+  },[])
 
   const formattedTime = {
     hours: Math.floor(timer / 3600),
@@ -79,31 +100,81 @@ const TestInterface = () => {
   };
   
   const handleOptionClick = (index) => {
+    if (!questionsData[currentSubject] || !questionsData[currentSubject][currentQuestion]) {
+      return;
+    }
+    
     setAnswers({ ...answers, [`${currentSubject}-${currentQuestion}`]: index });
     setVisitedQuestions({
       ...visitedQuestions,
       [`${currentSubject}-${currentQuestion}`]: true,
     });
+    
+    // Record that the question has been visited
+    localStorage.setItem(
+      "visitedQuestions",
+      JSON.stringify({
+        ...visitedQuestions,
+        [`${currentSubject}-${currentQuestion}`]: true,
+      })
+    );
+    
+    // Save answer to localStorage
+    const currentAnswers = JSON.parse(localStorage.getItem("testAnswers")) || {};
+    currentAnswers[`${currentSubject}-${currentQuestion}`] = index;
+    localStorage.setItem("testAnswers", JSON.stringify(currentAnswers));
   };
-  const [timeSpent, setTimeSpent] = useState({});
+  
   const handleNavigation = (direction) => {
     const currentTime = new Date().getTime();
-    setTimeSpent({
+    const newTimeSpent = {
       ...timeSpent,
       [`${currentSubject}-${currentQuestion}`]: currentTime,
-    });
-    const totalQuestions = questionsData[currentSubject]?.length || 0;
-    if (direction === "next" && currentQuestion < totalQuestions - 1) {
+    };
+    setTimeSpent(newTimeSpent);
+    
+    // Save time spent to localStorage
+    localStorage.setItem("timeSpent", JSON.stringify(newTimeSpent));
+    
+    const totalQuestionsInSubject = totalQuestionsBySubject[currentSubject] || 0;
+    
+    if (direction === "next" && currentQuestion < totalQuestionsInSubject - 1) {
       setCurrentQuestion(currentQuestion + 1);
+    } else if (direction === "next" && currentQuestion >= totalQuestionsInSubject - 1) {
+      // Move to next subject
+      const subjectIndex = subjects.findIndex(s => s.name === currentSubject);
+      if (subjectIndex < subjects.length - 1) {
+        setCurrentSubject(subjects[subjectIndex + 1].name);
+        setCurrentQuestion(0);
+      }
     } else if (direction === "prev" && currentQuestion > 0) {
       setCurrentQuestion(currentQuestion - 1);
+    } else if (direction === "prev" && currentQuestion === 0) {
+      // Move to previous subject
+      const subjectIndex = subjects.findIndex(s => s.name === currentSubject);
+      if (subjectIndex > 0) {
+        const prevSubject = subjects[subjectIndex - 1].name;
+        setCurrentSubject(prevSubject);
+        setCurrentQuestion(totalQuestionsBySubject[prevSubject] - 1);
+      }
     }
   };
+  
   const handleReviewLater = () => {
     setMarkedForReview({
       ...markedForReview,
       [`${currentSubject}-${currentQuestion}`]: true,
     });
+    
+    // Save marked questions to localStorage
+    localStorage.setItem(
+      "markedForReview",
+      JSON.stringify({
+        ...markedForReview,
+        [`${currentSubject}-${currentQuestion}`]: true,
+      })
+    );
+    
     handleNavigation("next");
   };
 
@@ -111,29 +182,33 @@ const TestInterface = () => {
     const updatedAnswers = { ...answers };
     delete updatedAnswers[`${currentSubject}-${currentQuestion}`];
     setAnswers(updatedAnswers);
+    
+    // Update localStorage
+    const currentAnswers = JSON.parse(localStorage.getItem("testAnswers")) || {};
+    delete currentAnswers[`${currentSubject}-${currentQuestion}`];
+    localStorage.setItem("testAnswers", JSON.stringify(currentAnswers));
   };
 
   const handleSubmit = async () => {
-    const confirmSubmit = window.confirm("Confirm submit?");
+    const confirmSubmit = window.confirm("Are you sure you want to submit your test?");
     if (!confirmSubmit) return;
 
     const authToken = localStorage.getItem("authToken");
     if (!authToken) {
-      toast.error("Authentication failed! Please log in again.",{
+      toast.error("Authentication failed! Please log in again.", {
         duration: 5000
       });
-      
       return;
     }
+    
     const endTime = new Date().toISOString();
-    const startTime =
-      localStorage.getItem("testStartTime") || new Date().toISOString(); // ✅ Assuming start time is saved when the test starts.
+    const startTime = localStorage.getItem("testStartTime") || new Date().toISOString();
     let correctAnswers = [];
     let wrongAnswers = [];
     let notAttempted = [];
     let totalMarks = 0;
 
-    // ✅ Process all answers to categorize them properly
+    // Process answers by subject
     Object.keys(questionsData).forEach((subject) => {
       questionsData[subject].forEach((question, index) => {
         const selectedOptionIndex = answers[`${subject}-${index}`];
@@ -155,7 +230,7 @@ const TestInterface = () => {
           selectedOption,
           correctOption,
           marks,
-          0, // ✅ Time spent can be calculated if tracked
+          timeSpent[`${subject}-${index}`] || 0,
         ];
 
         if (selectedOption === null) {
@@ -192,212 +267,333 @@ const TestInterface = () => {
       );
 
       if (response.status === 201) {
-        toast.success("Test submitted successfully!",{
+        toast.success("Test submitted successfully!", {
           duration: 5000
         });
         window.location.href = "/result";
       } else {
-        toast.error("Failed to submit test.",{
+        toast.error("Failed to submit test.", {
           duration: 5000
         });
       }
     } catch (error) {
       toast.error(
-        "❌ Error submitting test:",
-        error.response?.data || error.message,{
-          duration: 5000
-        }
+        "Error submitting test: " + (error.response?.data?.message || error.message),
+        { duration: 5000 }
       );
-      toast.error(`Error: ${error.response?.data?.error || "Something went wrong"}`,{
-        duration: 5000
-      });
     }
   };
+  
+  // Helper functions for stats
+  const getAnsweredCountBySubject = (subject) => {
+    return Object.keys(answers).filter(key => key.startsWith(`${subject}-`)).length;
+  };
+  
+  const getMarkedCountBySubject = (subject) => {
+    return Object.keys(markedForReview).filter(key => key.startsWith(`${subject}-`)).length;
+  };
+  
+  const getVisitedCountBySubject = (subject) => {
+    return Object.keys(visitedQuestions).filter(key => key.startsWith(`${subject}-`)).length;
+  };
 
-  if (loading)
-    return <p className="text-center text-xl"><Loading/></p>;
-  if (error) return <p className="text-center text-red-500">{error}</p>;
+  if (loading) {
+    return (
+      <div className="h-screen flex justify-center items-center bg-gray-50">
+        <Loading />
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="h-screen flex justify-center items-center bg-gray-50">
+        <p className="text-center text-red-500 text-xl bg-white p-6 rounded-lg shadow-lg">
+          {error}
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <div className="h-screen w-full bg-gray-100 flex flex-col">
-      {/* Mock Test Header */}
-      <div className="text-center py-4">
-        <button className="bg-[#49A6CF] text-white font-bold py-2 px-6 rounded-md text-lg cursor-default">
-          Mock Test
-        </button>
-      </div>
-
-      {/* Subject Tabs */}
-      <div className="flex flex-col">
-        <div className="flex justify-center gap-6">
-          {subjects.map((subject) => (
-            <button
-              key={subject.name}
-              className={`px-6 py-2 flex items-center gap-2 rounded-md border ${
-                currentSubject === subject.name
-                  ? "border-blue-500 text-blue-600 font-bold"
-                  : "border-gray-300"
-              }`}
-              onClick={() => {
-                setCurrentSubject(subject.name);
-                setCurrentQuestion(0);
-              }}
-            >
-              {subject.icon} {subject.name} Section
-            </button>
-          ))}
-        </div>
-        <hr className="border-t border-gray-200 mt-4" />
-      </div>
-
-      {/* Main Content */}
-      <div className="flex flex-grow mt-6 px-8">
-        {/* Left Section: Questions & Options */}
-        <div className="w-2/3 bg-white p-8 rounded-lg shadow-md flex flex-col gap-8">
-          <div className="flex items-center gap-8">
-            {/* Question Image */}
-            <div className="w-1/3 flex justify-center items-center">
-              <img
-                src="/question.png"
-                alt="Question"
-                className="w-full max-w-[400px] object-contain"
-              />
-            </div>
-
-            {/* Question & Options */}
-            <div className="w-3/5">
-              <h3 className="text-2xl">
-                Q{currentQuestion + 1}.{" "}
-                {questionsData[currentSubject]?.[currentQuestion]?.question ||
-                  "No Question Available"}
-              </h3>
-
-              <div className="mt-6">
-                {questionsData[currentSubject]?.[currentQuestion]?.options.map(
-                  (option, index) => (
-                    <button
-                      key={index}
-                      className={`block w-2/3 text-left px-6 py-3 rounded-lg border text-lg font- mb-3 ${
-                        answers[`${currentSubject}-${currentQuestion}`] ===
-                        index
-                          ? "bg-[#0077B6] text-white"
-                          : "bg-white"
-                      }`}
-                      onClick={() => handleOptionClick(index)}
-                    >
-                      {option}
-                    </button>
-                  )
-                )}
+    <div className="min-h-screen w-full bg-gray-100 flex flex-col">
+      {/* Header with Timer */}
+      <div className="bg-white shadow-md py-4 sticky top-0 z-10">
+        <div className="container mx-auto px-4 flex flex-col md:flex-row justify-between items-center">
+          <h1 className="text-2xl font-bold text-gray-800 mb-2 md:mb-0">{testName}</h1>
+          
+          <div className="flex flex-wrap gap-4 items-center">
+            {/* Timer Display */}
+            <div className="bg-blue-50 p-3 rounded-lg shadow">
+              <div className="flex items-center gap-2 mb-1">
+                <FaClock className="text-blue-600" />
+                <span className="font-medium text-blue-700">Time Left</span>
+              </div>
+              <div className="flex gap-2">
+                <div className="bg-blue-600 text-white px-3 py-1 rounded-md font-medium">
+                  {formattedTime.hours.toString().padStart(2, '0')}h
+                </div>
+                <div className="bg-blue-600 text-white px-3 py-1 rounded-md font-medium">
+                  {formattedTime.minutes.toString().padStart(2, '0')}m
+                </div>
+                <div className="bg-blue-600 text-white px-3 py-1 rounded-md font-medium">
+                  {formattedTime.seconds.toString().padStart(2, '0')}s
+                </div>
               </div>
             </div>
-          </div>
-
-          {/* Navigation Buttons */}
-          <div className="mt-8 flex justify-center gap-6">
+            
+            <div className="text-center bg-gray-50 p-2 rounded-lg">
+              <div className="text-sm text-gray-500">Time per question</div>
+              <div className="font-bold text-gray-700">1 minute</div>
+            </div>
+            
             <button
-              onClick={handleClearResponse}
-              className="px-8 py-3 rounded-lg bg-[#49A6CF] text-white text-lg font-semibold"
+              onClick={handleSubmit}
+              className="px-6 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition flex items-center gap-2"
             >
-              Clear Response
-            </button>
-            <button
-              onClick={handleReviewLater}
-              className="px-8 py-3 rounded-lg bg-[#49A6CF] text-white text-lg font-semibold"
-            >
-              Review Later
-            </button>
-            <button
-              onClick={() => handleNavigation("prev")}
-              className="px-8 py-3 rounded-lg bg-[#49A6CF] text-white text-lg font-semibold"
-            >
-              Previous
-            </button>
-            <button
-              onClick={() => handleNavigation("next")}
-              className="px-8 py-3 rounded-lg bg-[#49A6CF] text-white text-lg font-semibold"
-            >
-              Next
+              <FaCheck /> Submit Test
             </button>
           </div>
         </div>
+      </div>
 
-        {/* Right Sidebar: Timer & Legend */}
-        <div className="w-1/3 p-6">
-          {/* Timer */}
-          <div className="text-center">
-            <h3 className="font-bold text-lg">Time Left</h3>
-            <div className="mt-4 flex justify-center gap-4 text-lg">
-              <div className="bg-black text-white px-4 py-2 rounded-lg">
-                {formattedTime.hours} HRS
-              </div>
-              <div className="bg-black text-white px-4 py-2 rounded-lg">
-                {formattedTime.minutes} MIN
-              </div>
-              <div className="bg-black text-white px-4 py-2 rounded-lg">
-                {formattedTime.seconds} SEC
-              </div>
-            </div>
-          </div>
-
-          {/* Boxes section */}
-          <div className="mt-6 grid grid-cols-2 gap-2">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-[#16DBCC] rounded"></div>
-              <span>Answered</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-[#FE5C73] rounded"></div>
-              <span>Unanswered</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-gray-400 rounded"></div>
-              <span>Not Visited</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-[#007AFF] rounded"></div>
-              <span>Review Left</span>
-            </div>
-          </div>
-
-          {/* Legend & Question Number Boxes */}
-          <div className="mt-6">
-            <h3 className="font-bold mb-2">Legend</h3>
-            <div className="grid grid-cols-5 gap-2 text-center">
-              {questionsData[currentSubject]?.map((_, index) => (
+      {/* Main Content with sidebar at the top for mobile and on the right for desktop */}
+      <div className="container mx-auto px-4 py-4 flex flex-col lg:flex-row gap-6">
+        {/* Question Side Content */}
+        <div className="lg:w-2/3 flex flex-col gap-4">
+          {/* Subject Tabs */}
+          <div className="bg-white rounded-lg shadow-md p-4">
+            <h2 className="text-lg font-semibold mb-3">Subject Sections</h2>
+            <div className="grid grid-cols-3 gap-4">
+              {subjects.map((subject) => (
                 <button
-                  key={index}
-                  className={`w-10 h-10 flex items-center justify-center text-white rounded ${
-                    markedForReview[`${currentSubject}-${index}`]
-                      ? "bg-[#007AFF]"
-                      : answers[`${currentSubject}-${index}`] !== undefined
-                      ? "bg-[#16DBCC]"
-                      : visitedQuestions[`${currentSubject}-${index}`]
-                      ? "bg-[#FE5C73]"
-                      : "bg-gray-400"
+                  key={subject.name}
+                  className={`px-4 py-3 flex flex-col items-center gap-2 rounded-lg transition-all ${
+                    currentSubject === subject.name
+                      ? "bg-blue-600 text-white shadow-lg transform scale-105"
+                      : "bg-gray-100 hover:bg-gray-200 text-gray-700"
                   }`}
-                  onClick={() => setCurrentQuestion(index)}
+                  onClick={() => {
+                    setCurrentSubject(subject.name);
+                    setCurrentQuestion(0);
+                  }}
                 >
-                  {index + 1}
+                  <div className="flex items-center gap-2">
+                    {subject.icon}
+                    <span className="font-medium">{subject.name}</span>
+                  </div>
+                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+                    {getAnsweredCountBySubject(subject.name)}/{subject.questionCount}
+                  </span>
                 </button>
               ))}
             </div>
-
-            {/* Instructions for Mandatory Marking Scheme */}
-            <div className="mt-6 text-center text-lg font-semibold">
-              All the questions in this section are Mandatory. Marking scheme
-              for this section:
+          </div>
+          
+          {/* Question Box */}
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="mb-6 flex justify-between items-center">
+              <span className="bg-blue-100 text-blue-800 px-4 py-1 rounded-full font-medium">
+                Question {currentQuestion + 1} of {totalQuestionsBySubject[currentSubject]}
+              </span>
+              <span className="text-gray-500 flex items-center gap-2">
+                {subjects.find(s => s.name === currentSubject)?.icon}
+                <span className="font-medium">{currentSubject}</span>
+              </span>
             </div>
-
-            {/* Submit Test Button */}
-            <div className="mt-6 flex justify-center">
-              <button
-                onClick={handleSubmit}
-                className="px-8 py-3 bg-red-600 text-white text-lg font-bold hover:bg-red-700 transition"
-              >
-                Submit Test
-              </button>
+            
+            <div className="flex flex-col md:flex-row gap-6">
+              {/* Question Content */}
+              <div className="w-full">
+                <h3 className="text-xl font-semibold mb-6">
+                  {questionsData[currentSubject]?.[currentQuestion]?.question || 
+                    "No question available for this subject yet"}
+                </h3>
+                
+                <div className="space-y-4 mt-6">
+                  {questionsData[currentSubject]?.[currentQuestion]?.options.map(
+                    (option, index) => (
+                      <button
+                        key={index}
+                        className={`w-full text-left px-6 py-4 rounded-lg border-2 transition-all ${
+                          answers[`${currentSubject}-${currentQuestion}`] === index
+                            ? "border-blue-500 bg-blue-50"
+                            : "border-gray-200 hover:border-gray-400"
+                        }`}
+                        onClick={() => handleOptionClick(index)}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0 ${
+                            answers[`${currentSubject}-${currentQuestion}`] === index
+                              ? "bg-blue-500 text-white"
+                              : "bg-gray-200"
+                          }`}>
+                            {String.fromCharCode(65 + index)}
+                          </div>
+                          <span>{option}</span>
+                        </div>
+                      </button>
+                    )
+                  )}
+                </div>
+              </div>
             </div>
+            
+            {/* Navigation Buttons */}
+            <div className="mt-8 flex flex-wrap justify-between gap-4">
+              <div className="flex gap-3">
+                <button
+                  onClick={handleClearResponse}
+                  className="px-6 py-3 rounded-lg bg-yellow-500 hover:bg-yellow-600 text-white font-medium transition-colors"
+                >
+                  Clear Response
+                </button>
+                <button
+                  onClick={handleReviewLater}
+                  className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+                    markedForReview[`${currentSubject}-${currentQuestion}`]
+                      ? "bg-purple-700 text-white"
+                      : "bg-purple-500 hover:bg-purple-600 text-white"
+                  }`}
+                >
+                  {markedForReview[`${currentSubject}-${currentQuestion}`] 
+                    ? "Marked for Review" 
+                    : "Mark for Review"}
+                </button>
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleNavigation("prev")}
+                  className="px-6 py-3 rounded-lg bg-blue-500 hover:bg-blue-600 text-white font-medium transition-colors"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() => handleNavigation("next")}
+                  className="px-6 py-3 rounded-lg bg-blue-500 hover:bg-blue-600 text-white font-medium transition-colors"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Right Sidebar: Status & Question Grids */}
+        <div className="lg:w-1/3 space-y-4 flex flex-col">
+          {/* Test Status - Moved higher up */}
+          <div className="bg-white rounded-lg shadow-lg p-4">
+            <h3 className="font-semibold text-lg mb-3">Test Overview</h3>
+            
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div className="bg-green-50 p-3 rounded-lg">
+                <div className="flex justify-between items-center">
+                  <span className="text-green-700 text-sm">Answered</span>
+                  <span className="text-green-700 font-bold">{Object.keys(answers).length}</span>
+                </div>
+              </div>
+              
+              <div className="bg-purple-50 p-3 rounded-lg">
+                <div className="flex justify-between items-center">
+                  <span className="text-purple-700 text-sm">Marked</span>
+                  <span className="text-purple-700 font-bold">{Object.keys(markedForReview).length}</span>
+                </div>
+              </div>
+              
+              <div className="bg-blue-50 p-3 rounded-lg">
+                <div className="flex justify-between items-center">
+                  <span className="text-blue-700 text-sm">Total</span>
+                  <span className="text-blue-700 font-bold">{totalQuestions}</span>
+                </div>
+              </div>
+              
+              <div className="bg-red-50 p-3 rounded-lg">
+                <div className="flex justify-between items-center">
+                  <span className="text-red-700 text-sm">Remaining</span>
+                  <span className="text-red-700 font-bold">
+                    {totalQuestions - Object.keys(answers).length}
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-gray-100 p-3 rounded-lg">
+              <div className="text-sm text-gray-500 mb-1">Your Progress</div>
+              <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                <div 
+                  className="bg-green-500 h-2" 
+                  style={{ width: `${(Object.keys(answers).length / totalQuestions) * 100}%` }}
+                ></div>
+              </div>
+              <div className="text-right text-sm mt-1">
+                {Math.round((Object.keys(answers).length / totalQuestions) * 100)}% Complete
+              </div>
+            </div>
+          </div>
+          
+          {/* Question Legend - Moved higher up */}
+          <div className="bg-white rounded-lg shadow-lg p-4 flex-grow overflow-auto">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-lg">{currentSubject} Questions</h3>
+              <div className="flex items-center gap-2">
+                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                  {getAnsweredCountBySubject(currentSubject)}/{totalQuestionsBySubject[currentSubject]} answered
+                </span>
+              </div>
+            </div>
+            
+            {/* Legend colors */}
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-green-500 rounded-full"></div>
+                <span className="text-sm">Answered</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-red-500 rounded-full"></div>
+                <span className="text-sm">Unanswered</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-gray-400 rounded-full"></div>
+                <span className="text-sm">Not Visited</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-purple-500 rounded-full"></div>
+                <span className="text-sm">Review</span>
+              </div>
+            </div>
+            
+            {/* Only show current subject question grid */}
+            <div className="bg-gray-50 p-3 rounded-lg">
+              {/* Question number grid for current subject */}
+              <div className="grid grid-cols-9 gap-1">
+                {Array.from({ length: totalQuestionsBySubject[currentSubject] }).map((_, index) => (
+                  <button
+                    key={index}
+                    className={`aspect-square flex items-center justify-center text-xs font-medium text-white rounded transition-all ${
+                      currentQuestion === index
+                        ? "ring-2 ring-blue-300 ring-offset-1"
+                        : ""
+                    } ${
+                      markedForReview[`${currentSubject}-${index}`]
+                        ? "bg-purple-500 hover:bg-purple-600"
+                        : answers[`${currentSubject}-${index}`] !== undefined
+                        ? "bg-green-500 hover:bg-green-600"
+                        : visitedQuestions[`${currentSubject}-${index}`]
+                        ? "bg-red-500 hover:bg-red-600"
+                        : "bg-gray-400 hover:bg-gray-500"
+                    }`}
+                    onClick={() => {
+                      setCurrentQuestion(index);
+                    }}
+                  >
+                    {index + 1}
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            
           </div>
         </div>
       </div>
