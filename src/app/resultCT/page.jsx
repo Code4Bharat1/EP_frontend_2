@@ -10,7 +10,7 @@ const Page = () => {
   return (
     <div>
       {/* Desktop View (TestInterface will be visible) */}
-      <div className="hidden md:block">
+      <div className="hidden md:block overflow-x-hidden">
         <ResultPage/>
       </div>
 
@@ -19,7 +19,7 @@ const Page = () => {
        <ResultMobile />
         
       </div>
-      <div className='mt-48'><BottomNavbar/></div>
+      <div className='mt-48 md:hidden'><BottomNavbar/></div>
     </div>
   );
 }

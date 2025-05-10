@@ -28,14 +28,14 @@ const ScheduledTestCard = () => {
           return;
         }
   
-        // Decode the JWT to get student ID (assuming it's stored in the token)
+        // Decode the JWT to get student ID
         const decodedToken = JSON.parse(atob(token.split('.')[1]));
-        const studentId = decodedToken.id; // Adjust this based on your JWT structure
+        const studentId = decodedToken.id;
   
         // Send request with studentId in the body
         const res = await axios.post(
           `${process.env.NEXT_PUBLIC_API_BASE_URL}/newadmin/test-data`,
-          { studentId } // Send studentId in the request body
+          { studentId }
         );
   
         const rawTests = res.data.tests;
@@ -44,23 +44,28 @@ const ScheduledTestCard = () => {
   
         const upcomingTests = rawTests
           .map((test, index) => {
-            const testDate = new Date(test.exam_start_date);
-            testDate.setHours(0, 0, 0, 0);
-          
-            if (testDate < today) return null;
-          
+            const startDate = new Date(test.exam_start_date);
+            startDate.setHours(0, 0, 0, 0);
+            
+            const endDate = new Date(test.exam_end_date);
+            endDate.setHours(23, 59, 59, 999); // End of the day
+            
+            // Skip tests that have already ended
+            if (today > endDate) return null;
+            
             return {
               id: test.id,
               name: test.testname,
               questions: `${test.no_of_questions} QUESTIONS`,
-              date: testDate.toLocaleDateString("en-GB"),
-              rawDate: testDate,
-              isToday: testDate.getTime() === today.getTime(),
+              date: startDate.toLocaleDateString("en-GB"),
+              rawStartDate: startDate,
+              rawEndDate: endDate,
+              isActive: today >= startDate && today <= endDate,
               bgColor: bgColors[index % bgColors.length],
             };
           })
           .filter(Boolean)
-          .sort((a, b) => a.rawDate - b.rawDate);
+          .sort((a, b) => a.rawStartDate - b.rawStartDate);
   
         setTests(upcomingTests);
       } catch (error) {
@@ -74,7 +79,6 @@ const ScheduledTestCard = () => {
   const handleStartTest = (testname) => {
     localStorage.setItem("testid", testname);
     console.log(`Set testid in localStorage: ${testname}`);
-    // Optionally, navigate to test page here
     router.push('/testinterfaceGT');
   };
 
@@ -109,14 +113,14 @@ const ScheduledTestCard = () => {
                 <div className="md:hidden h-6 border-l border-gray-300 mx-4"></div>
 
                 <button
-                  onClick={() => test.isToday && handleStartTest(test.name)}
+                  onClick={() => test.isActive && handleStartTest(test.name)}
                   className={`text-[9px] px-1 py-2 rounded-md text-center md:hidden mt-1 w-[120px] ${
-                    test.isToday
+                    test.isActive
                       ? "bg-red-500 text-white"
                       : "bg-[#718EBF] text-white"
                   }`}
                 >
-                  {test.isToday ? "Start Test" : `Scheduled on ${test.date}`}
+                  {test.isActive ? "Start Test" : `Scheduled on ${test.date}`}
                 </button>
               </div>
             </div>
@@ -136,14 +140,14 @@ const ScheduledTestCard = () => {
 
             {/* DESKTOP DATE / START TEST */}
             <button
-              onClick={() => test.isToday && handleStartTest(test.id)}
+              onClick={() => test.isActive && handleStartTest(test.id)}
               className={`hidden md:block px-4 py-2 rounded-md text-center w-[250px] ${
-                test.isToday
+                test.isActive
                   ? "bg-red-500 text-white"
                   : "bg-[#718EBF] text-white"
               }`}
             >
-              {test.isToday ? "Start Test" : `Scheduled on ${test.date}`}
+              {test.isActive ? "Start Test" : `Scheduled on ${test.date}`}
             </button>
           </div>
         </div>

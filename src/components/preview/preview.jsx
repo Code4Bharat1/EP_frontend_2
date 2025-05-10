@@ -198,7 +198,7 @@ const Preview = () => {
             📖 Chapters
           </button>
 
-          {/* Difficulty Level */}
+          {/* Difficulty Level
           <button
             onClick={() => handleSectionClick("difficulty")}
             className={`w-full px-3 py-4 text-lg font-semibold flex items-center gap-2 ${
@@ -208,7 +208,7 @@ const Preview = () => {
             }`}
           >
             🌈 Difficulty Level
-          </button>
+          </button> */}
 
           {/* Total Questions */}
           <button

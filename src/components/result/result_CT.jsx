@@ -5,26 +5,17 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import Confetti from "react-confetti";
 import { useWindowSize } from "react-use";
-import { FaFlask, FaAtom, FaDna, FaEye } from "react-icons/fa";
+import { 
+  FaFlask, FaAtom, FaDna, FaEye, FaTrophy, 
+  FaCheckCircle, FaTimesCircle, FaBook
+} from "react-icons/fa";
 
-// Icon and background color mappings for subjects
-const subjectMapping = {
-  Physics: {
-    icon: <FaAtom className="text-red-500 text-xl" />,
-    bgColor: "bg-red-100",
-  },
-  Chemistry: {
-    icon: <FaFlask className="text-yellow-500 text-xl" />,
-    bgColor: "bg-yellow-100",
-  },
-  Biology: {
-    icon: <FaDna className="text-green-500 text-xl" />,
-    bgColor: "bg-green-100",
-  },
-  Botany: {
-    icon: <FaEye className="text-purple-500 text-xl" />,
-    bgColor: "bg-purple-100",
-  },
+// Simple subject configuration
+const subjectConfig = {
+  Physics: { icon: <FaAtom />, color: "text-blue-600", bgColor: "bg-blue-100" },
+  Chemistry: { icon: <FaFlask />, color: "text-green-600", bgColor: "bg-green-100" },
+  Biology: { icon: <FaDna />, color: "text-red-600", bgColor: "bg-red-100" },
+  Botany: { icon: <FaEye />, color: "text-purple-600", bgColor: "bg-purple-100" },
 };
 
 const ResultPage = () => {
@@ -34,179 +25,218 @@ const ResultPage = () => {
   const [score, setScore] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
   const [subjects, setSubjects] = useState([]);
-  const [testAnswers, setTestAnswers] = useState([]);
+  const [totalPossibleMarks, setTotalPossibleMarks] = useState(0);
+  const [stats, setStats] = useState({ correct: 0, incorrect: 0, unattempted: 0 });
 
   useEffect(() => {
     const storedAnswers = JSON.parse(localStorage.getItem("testAnswers")) || [];
-    setTestAnswers(storedAnswers);
-
-    // Calculate overall score: +4 for correct, -1 for incorrect
-    let totalScore = 0;
-    storedAnswers.forEach((answer) => {
-      totalScore += answer.isCorrect ? 4 : -1;
+    
+    // Get the selected chapters data
+    const selectedChapters = JSON.parse(localStorage.getItem("selectedChapters")) || {};
+    
+    // Calculate total marks
+    let totalMarks = 0;
+    let totalQuestions = 0;
+    Object.values(selectedChapters).forEach(subjectChapters => {
+      subjectChapters.forEach(chapter => {
+        const questions = Number(chapter.numQuestions) || 0;
+        totalMarks += questions * 4;
+        totalQuestions += questions;
+      });
     });
-    const maxOverall = storedAnswers.length * 4;
+    setTotalPossibleMarks(totalMarks);
+
+    // Calculate score and stats
+    let totalScore = 0;
+    let correct = 0;
+    let incorrect = 0;
+    
+    storedAnswers.forEach((answer) => {
+      if (answer.isCorrect) {
+        totalScore += 4;
+        correct++;
+      } else {
+        totalScore -= 1;
+        incorrect++;
+      }
+    });
+    
     setScore(totalScore);
+    setStats({
+      correct,
+      incorrect,
+      unattempted: totalQuestions - storedAnswers.length
+    });
 
     // Calculate subject-wise scores
     const subjectsObj = {};
     storedAnswers.forEach((answer) => {
       if (!subjectsObj[answer.subject]) {
-        subjectsObj[answer.subject] = { score: 0, count: 0 };
+        subjectsObj[answer.subject] = { score: 0, total: 0 };
       }
       subjectsObj[answer.subject].score += answer.isCorrect ? 4 : -1;
-      subjectsObj[answer.subject].count += 1;
     });
 
-    // Retrieve selected subjects from localStorage
-    const selectedSubjects =
-      JSON.parse(localStorage.getItem("selectedSubjects")) || [];
+    // Get subject max marks
+    const subjectMaxMarks = {};
+    Object.entries(selectedChapters).forEach(([subject, chapters]) => {
+      subjectMaxMarks[subject] = chapters.reduce((total, chapter) => {
+        return total + (Number(chapter.numQuestions) || 0) * 4;
+      }, 0);
+    });
+
+    // Build subjects array
+    const selectedSubjects = JSON.parse(localStorage.getItem("selectedSubjects")) || [];
     const computedSubjects = selectedSubjects.map((subj) => {
-      const subjectData = subjectMapping[subj];
+      const config = subjectConfig[subj] || subjectConfig.Physics;
       const subjectScore = subjectsObj[subj]?.score || 0;
-      const subjectCount = subjectsObj[subj]?.count || 0;
+      const subjectMax = subjectMaxMarks[subj] || 0;
+      
       return {
         name: subj,
         score: subjectScore,
-        max: subjectCount * 4,
-        icon: subjectData?.icon || <FaAtom className="text-gray-500 text-xl" />,
-        bgColor: subjectData?.bgColor || "bg-gray-100",
+        max: subjectMax,
+        ...config
       };
     });
     setSubjects(computedSubjects);
 
-    // Show confetti if overall percentage is 70% or higher
-    if (maxOverall > 0 && (totalScore / maxOverall) * 100 >= 70) {
+    // Show confetti if good performance
+    if (totalMarks > 0 && (totalScore / totalMarks) * 100 >= 70) {
       setShowConfetti(true);
-      const timer = setTimeout(() => setShowConfetti(false), 6000);
-      return () => clearTimeout(timer);
+      setTimeout(() => setShowConfetti(false), 4000);
     }
   }, []);
 
-  const handleRetakeTest = () => {
-    router.push("/testinterface");
-    localStorage.removeItem("testAnswers");
-  };
+  const percentage = totalPossibleMarks > 0 ? Math.round((score / totalPossibleMarks) * 100) : 0;
+  const isGoodPerformance = percentage >= 70;
 
   return (
     <div className="h-screen w-screen overflow-hidden flex items-center justify-center bg-gray-100 relative">
-      {/* Confetti Animation (Only if overall percentage >= 70%) */}
-      {showConfetti && (
-        <Confetti
-          width={width}
-          height={height}
-          numberOfPieces={500}
-          recycle={false}
-        />
-      )}
+      {/* Confetti */}
+      {showConfetti && <Confetti width={width} height={height} numberOfPieces={300} recycle={false} />}
 
-      <div className="w-full h-full flex flex-col md:flex-row bg-white shadow-lg">
-        {/* Left Section - Overall Score Display */}
+      {/* Main Content */}
+      <div className="w-full h-full max-w-6xl mx-auto p-6 grid grid-cols-2 gap-6">
+        {/* Left Side - Score Display */}
         <motion.div
-          className="w-full md:w-[40%] h-full bg-gradient-to-b from-[#0077B6] to-[#ADE8F4] flex flex-col items-center justify-center text-white p-6 rounded-r-3xl"
           initial={{ opacity: 0, x: -50 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5 }}
+          className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl p-6 text-white relative overflow-hidden"
         >
-          <motion.h2 className="text-lg font-semibold">Your Result</motion.h2>
-          <motion.div
-            className="w-40 h-40 bg-gradient-to-b from-[#ADE8F4] to-[#0077B6] rounded-full flex flex-col items-center justify-center mt-4 shadow-md"
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 0.5, type: "spring" }}
-          >
-            <motion.span className="text-4xl font-bold">{score}</motion.span>
-            <motion.span className="text-lg">
-              of {testAnswers.length * 4}
-            </motion.span>
-          </motion.div>
-          <motion.h3 className="text-xl font-semibold mt-4">
-            {(score / (testAnswers.length * 4)) * 100 >= 70
-              ? "Excellent 🎉"
-              : "Keep Improving 💪"}
-          </motion.h3>
-          <motion.p className="text-sm text-center px-6 mt-2">
-            Your percentage:{" "}
-            {testAnswers.length > 0
-              ? Math.round((score / (testAnswers.length * 4)) * 100)
-              : 0}
-            %
-          </motion.p>
+          <div className="absolute top-0 right-0 opacity-10 text-9xl">
+            {isGoodPerformance ? <FaTrophy /> : <FaBook />}
+          </div>
+          
+          <div className="relative z-10">
+            <h2 className="text-2xl font-bold mb-6">Your Result</h2>
+            
+            {/* Score Circle */}
+            <div className="w-56 h-56 mx-auto bg-white/20 rounded-full flex flex-col items-center justify-center mb-6">
+              <span className="text-5xl font-bold">{percentage}%</span>
+              <span className="text-lg opacity-80">{score} / {totalPossibleMarks}</span>
+            </div>
+            
+            <h3 className="text-xl font-semibold text-center">
+              {isGoodPerformance ? "Excellent Job! 🎉" : "Keep Practicing! 💪"}
+            </h3>
+            
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-4 mt-6">
+              <div className="text-center">
+                <FaCheckCircle className="text-green-400 text-2xl mx-auto mb-1" />
+                <div className="text-2xl font-bold">{stats.correct}</div>
+                <div className="text-sm opacity-80">Correct</div>
+              </div>
+              <div className="text-center">
+                <FaTimesCircle className="text-red-400 text-2xl mx-auto mb-1" />
+                <div className="text-2xl font-bold">{stats.incorrect}</div>
+                <div className="text-sm opacity-80">Incorrect</div>
+              </div>
+              <div className="text-center">
+                <FaBook className="text-yellow-400 text-2xl mx-auto mb-1" />
+                <div className="text-2xl font-bold">{stats.unattempted}</div>
+                <div className="text-sm opacity-80">Unattempted</div>
+              </div>
+            </div>
+          </div>
         </motion.div>
 
-        {/* Right Section - Subject Summary and Actions */}
+        {/* Right Side - Details & Actions */}
         <motion.div
-          className="w-full md:w-[60%] h-full p-6 flex flex-col justify-center"
           initial={{ opacity: 0, x: 50 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5 }}
+          className="flex flex-col"
         >
-          <motion.h2 className="text-4xl font-bold text-gray-700 mb-4">
-            Summary
-          </motion.h2>
-
-          {/* Render Subject Scores */}
-          {subjects.map((subject, index) => (
-            <motion.div
-              key={index}
-              className={`w-20 md:w-3/4 p-4 mb-2 rounded-3xl ${subject.bgColor} shadow-sm mx-auto`}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.2, duration: 0.5 }}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {subject.icon}
-                  <span className="font-semibold text-gray-700">
-                    {subject.name}
-                  </span>
-                </div>
-                <span className="font-bold">
-                  {subject.score} / {subject.max}
-                </span>
-              </div>
-            </motion.div>
-          ))}
+          {/* Subject Breakdown */}
+          <div className="bg-white rounded-2xl p-6 shadow-lg mb-6 flex-1">
+            <h2 className="text-xl font-bold mb-4 text-gray-800">Subject Performance</h2>
+            
+            <div className="space-y-3">
+              {subjects.map((subject, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className={`flex items-center justify-between p-3 rounded-lg ${subject.bgColor}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className={`text-xl ${subject.color}`}>{subject.icon}</span>
+                    <span className="font-medium text-gray-800">{subject.name}</span>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-bold text-gray-800">
+                      {subject.score}/{subject.max}
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      {subject.max > 0 ? Math.round((subject.score / subject.max) * 100) : 0}%
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
 
           {/* Action Buttons */}
           <motion.div
-            className="flex flex-col gap-3 mt-6 items-center"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.5, duration: 0.5 }}
+            transition={{ delay: 0.5 }}
+            className="bg-white rounded-2xl p-6 shadow-lg"
           >
-            <motion.button
-              className="bg-[#303B59] text-white py-2 px-8 rounded-md w-64 text-center hover:bg-gray-800"
-              onClick={() => router.push("/review-mistakeCT")}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              Review Mistake
-            </motion.button>
-            <motion.button
-              className="bg-[#303B59] text-white py-2 px-8 rounded-md w-64 text-center hover:bg-gray-800"
-              onClick={handleRetakeTest}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              Retake Test
-            </motion.button>
-            <motion.button
-              className="bg-[#303B59] text-white py-2 px-8 rounded-md w-64 text-center hover:bg-gray-800"
-              onClick={() => router.push("/viewanalyticsCT")}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              View Analytics
-            </motion.button>
-            <motion.button
-              className="bg-[#303B59] text-white py-2 px-8 rounded-md w-64 text-center hover:bg-gray-800"
-              onClick={() => router.push("/dashboard")}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              Continue
-            </motion.button>
+            <h2 className="text-lg font-bold mb-4 text-gray-800">What's Next?</h2>
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                onClick={() => router.push("/review-mistakeCT")}
+                className="bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                Review Mistakes
+              </button>
+              <button
+                onClick={() => router.push("/viewanalyticsCT")}
+                className="bg-purple-600 text-white py-3 px-4 rounded-lg hover:bg-purple-700 transition-colors font-medium"
+              >
+                View Analytics
+              </button>
+              <button
+                onClick={() => {
+                  localStorage.removeItem("testAnswers");
+                  router.push("/testinterface");
+                }}
+                className="bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition-colors font-medium"
+              >
+                Retake Test
+              </button>
+              <button
+                onClick={() => router.push("/dashboard")}
+                className="bg-gray-600 text-white py-3 px-4 rounded-lg hover:bg-gray-700 transition-colors font-medium"
+              >
+                Dashboard
+              </button>
+            </div>
           </motion.div>
         </motion.div>
       </div>

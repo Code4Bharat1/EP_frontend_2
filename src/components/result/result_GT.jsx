@@ -35,17 +35,29 @@ const ResultPage = () => {
   const [showConfetti, setShowConfetti] = useState(false);
   const [subjects, setSubjects] = useState([]);
   const [testAnswers, setTestAnswers] = useState([]);
+  const [totalPossibleMarks, setTotalPossibleMarks] = useState(0);
 
   useEffect(() => {
     const storedAnswers = JSON.parse(localStorage.getItem("testAnswers")) || [];
     setTestAnswers(storedAnswers);
+
+    // Get the selected chapters data from localStorage
+    const selectedChapters = JSON.parse(localStorage.getItem("selectedChapters")) || {};
+    
+    // Calculate total possible marks from selected chapters
+    let totalMarks = 0;
+    Object.values(selectedChapters).forEach(subjectChapters => {
+      subjectChapters.forEach(chapter => {
+        totalMarks += (Number(chapter.numQuestions) || 0) * 4;
+      });
+    });
+    setTotalPossibleMarks(totalMarks);
 
     // Calculate overall score: +4 for correct, -1 for incorrect
     let totalScore = 0;
     storedAnswers.forEach((answer) => {
       totalScore += answer.isCorrect ? 4 : -1;
     });
-    const maxOverall = storedAnswers.length * 4;
     setScore(totalScore);
 
     // Calculate subject-wise scores
@@ -58,17 +70,25 @@ const ResultPage = () => {
       subjectsObj[answer.subject].count += 1;
     });
 
+    // Calculate subject-wise maximum possible marks from selected chapters
+    const subjectMaxMarks = {};
+    Object.entries(selectedChapters).forEach(([subject, chapters]) => {
+      subjectMaxMarks[subject] = chapters.reduce((total, chapter) => {
+        return total + (Number(chapter.numQuestions) || 0) * 4;
+      }, 0);
+    });
+
     // Retrieve selected subjects from localStorage
-    const selectedSubjects =
-      JSON.parse(localStorage.getItem("selectedSubjects")) || [];
+    const selectedSubjects = JSON.parse(localStorage.getItem("selectedSubjects")) || [];
     const computedSubjects = selectedSubjects.map((subj) => {
       const subjectData = subjectMapping[subj];
       const subjectScore = subjectsObj[subj]?.score || 0;
-      const subjectCount = subjectsObj[subj]?.count || 0;
+      const subjectMax = subjectMaxMarks[subj] || 0;
+      
       return {
         name: subj,
         score: subjectScore,
-        max: subjectCount * 4,
+        max: subjectMax,
         icon: subjectData?.icon || <FaAtom className="text-gray-500 text-xl" />,
         bgColor: subjectData?.bgColor || "bg-gray-100",
       };
@@ -76,7 +96,7 @@ const ResultPage = () => {
     setSubjects(computedSubjects);
 
     // Show confetti if overall percentage is 70% or higher
-    if (maxOverall > 0 && (totalScore / maxOverall) * 100 >= 70) {
+    if (totalMarks > 0 && (totalScore / totalMarks) * 100 >= 70) {
       setShowConfetti(true);
       const timer = setTimeout(() => setShowConfetti(false), 6000);
       return () => clearTimeout(timer);
@@ -117,20 +137,19 @@ const ResultPage = () => {
           >
             <motion.span className="text-4xl font-bold">{score}</motion.span>
             <motion.span className="text-lg">
-              of {testAnswers.length * 4}
+              of {totalPossibleMarks}
             </motion.span>
           </motion.div>
           <motion.h3 className="text-xl font-semibold mt-4">
-            {(score / (testAnswers.length * 4)) * 100 >= 70
+            {totalPossibleMarks > 0 && (score / totalPossibleMarks) * 100 >= 70
               ? "Excellent 🎉"
               : "Keep Improving 💪"}
           </motion.h3>
           <motion.p className="text-sm text-center px-6 mt-2">
             Your percentage:{" "}
-            {testAnswers.length > 0
-              ? Math.round((score / (testAnswers.length * 4)) * 100)
-              : 0}
-            %
+            {totalPossibleMarks > 0
+              ? Math.round((score / totalPossibleMarks) * 100)
+              : 0}%
           </motion.p>
         </motion.div>
 
