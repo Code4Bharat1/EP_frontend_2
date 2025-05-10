@@ -2,7 +2,15 @@
 import { motion } from "framer-motion";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { FaChevronDown } from "react-icons/fa";
+import { 
+  FaChevronRight, 
+  FaSpinner, 
+  FaExclamationCircle,
+  FaSearch,
+  FaFilter,
+  FaChevronLeft,
+  FaTimes
+} from "react-icons/fa";
 import { PieChart, Pie, Cell, Label, Tooltip } from "recharts";
 import axios from "axios";
 
@@ -14,24 +22,27 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-const COLORS = [
-  "#356CF9",
-  "#E84646",
-  "#FF9500",
-  "#356CF9",
-  "#E84646",
-  "#FF9500",
-];
+const CHART_COLORS = {
+  correct: "#22c55e",
+  incorrect: "#ef4444",
+  unattempted: "#94a3b8"
+};
+
+const ITEMS_PER_PAGE = 9;
 
 const PastTest = () => {
   const [testResults, setTestResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterOption, setFilterOption] = useState("all");
+  const [showFilter, setShowFilter] = useState(false);
 
   useEffect(() => {
     const fetchPastTests = async () => {
       try {
-        const token = localStorage.getItem("authToken"); // Assuming you store the JWT token in localStorage
+        const token = localStorage.getItem("authToken");
         const response = await axios.get(
           `${process.env.NEXT_PUBLIC_API_BASE_URL}/test/pasttest`,
           {
@@ -41,7 +52,6 @@ const PastTest = () => {
           }
         );
         setTestResults(response.data.testAnalytics);
-        console.log(response.data.testAnalytics);
       } catch (err) {
         setError("Failed to fetch past test results");
         console.error(err);
@@ -53,170 +63,456 @@ const PastTest = () => {
     fetchPastTests();
   }, []);
 
-  if (loading) return <div className="text-center">Loading...</div>;
+  // Calculate score percentage for a test
+  const calculateScore = (test) => {
+    const hasMainData = test.correct !== undefined && test.incorrect !== undefined && test.unattempted !== undefined;
+    const hasAltData = test.correctAnswersCount !== undefined && test.wrongAnswersCount !== undefined && test.notAttemptedCount !== undefined;
+    
+    let correctValue, totalQuestions;
+    
+    if (hasMainData) {
+      correctValue = test.correct;
+      totalQuestions = test.correct + test.incorrect + test.unattempted;
+    } else if (hasAltData) {
+      correctValue = test.correctAnswersCount;
+      totalQuestions = test.correctAnswersCount + test.wrongAnswersCount + test.notAttemptedCount;
+    } else {
+      return 0;
+    }
 
-  if (error) return <div className="text-center text-red-500">{error}</div>;
+    return totalQuestions > 0 ? Math.round((correctValue / totalQuestions) * 100) : 0;
+  };
+
+  // Filter and search logic
+  const filteredResults = testResults.filter((test) => {
+    const matchesSearch = searchQuery === "" || 
+      (test.testName && test.testName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (test.testId && test.testId.toString().toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    if (!matchesSearch) return false;
+
+    if (filterOption === "all") return true;
+    
+    const score = calculateScore(test);
+    if (filterOption === "best") return score >= 80;
+    if (filterOption === "lowest") return score < 50;
+    
+    return true;
+  });
+
+  // Sort by performance if filter is applied
+  const sortedResults = [...filteredResults].sort((a, b) => {
+    if (filterOption === "best" || filterOption === "lowest") {
+      const scoreA = calculateScore(a);
+      const scoreB = calculateScore(b);
+      return filterOption === "best" ? scoreB - scoreA : scoreA - scoreB;
+    }
+    return 0;
+  });
+
+  // Pagination logic
+  const totalPages = Math.ceil(sortedResults.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedResults = sortedResults.slice(startIndex, endIndex);
+
+  // Reset to page 1 when search or filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterOption]);
+
+  const customTooltip = ({ active, payload }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white px-3 py-2 rounded-lg shadow-lg border border-gray-200">
+          <p className="text-sm font-medium text-gray-700">
+            {payload[0].name}: {payload[0].value}
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] text-gray-500">
+        <FaSpinner className="animate-spin text-3xl mb-4" />
+        <p className="text-lg">Loading past tests...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] text-red-500">
+        <FaExclamationCircle className="text-3xl mb-4" />
+        <p className="text-lg font-medium">{error}</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="mt-4 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
+        >
+          Try Again
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6">
-      {/* Heading */}
-      <div className="flex justify-center items-center">
-        <div className="text-center w-52 bg-[#49A6CF] text-white py-3 rounded-lg text-xl font-semibold">
-          Past Test
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-4 md:p-8">
+      {/* Header Section */}
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="max-w-7xl mx-auto mb-8"
+      >
+        <div className="text-center mb-6">
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-2">
+            Your Past Tests
+          </h1>
+          <p className="text-gray-600">Review your performance and track your progress</p>
         </div>
-      </div>
 
-      {/* Horizontal Line */}
-      <div className="py-9">
-        <div className="border-b-2 border-[#CACDD8] my-4 w-full "></div>
-      </div>
-
-      {/* Test Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {testResults.length === 0 ? (
-          <div>No past tests found.</div>
-        ) : (
-          testResults.map((test, index) => {
-            // Dynamically calculate totalQuestions as the sum of correct, incorrect, and unattempted
-            const totalQuestions =
-              test.correct + test.incorrect + test.unattempted;
-            const testQuestion =
-              test.correctAnswersCount +
-              test.wrongAnswersCount +
-              test.notAttemptedCount;
-            return (
-              <motion.div
-                key={`${test.testName}-${test.subjects.join(",")}-${index}`} // Unique key by combining relevant properties
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
+        {/* Search and Filter Section */}
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
+          {/* Search Bar */}
+          <div className="relative w-full md:w-96">
+            <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search by test name or ID..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
-                <Card className="flex flex-col p-5 shadow-md rounded-2xl border-t-0 border-l-4 border-r-4 border-b-[5px] border-[#B1CEFB]">
-                  <form>
-                    <CardHeader>
-                      {/* Subject Name */}
-                      <div className="relative z-0 w-full mb-4 group">
-                        <input
-                          type="text"
-                          value={test.subjects ? test.subjects.join(", ") : ""} // Fallback to an empty string
-                          readOnly
-                          className="block py-2.5 px-0 w-full text-sm text-[#6C727F] bg-transparent border-0 border-b-2 border-gray-300 appearance-none focus:outline-none focus:ring-0 focus:border-blue-600 peer"
-                          placeholder=" "
-                        />
-                        <label className="absolute text-md text-black font-semibold duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6 peer-focus:text-blue-600">
-                          Subject Name
-                        </label>
-                      </div>
+                <FaTimes />
+              </button>
+            )}
+          </div>
 
-                      {/* Test Name */}
-                      <div className="relative z-0 w-full mb-4 group">
-                        <input
-                          type="text"
-                          value={test.testName || ""} // Fallback to an empty string if testName is null or undefined
-                          readOnly
-                          className="block py-2.5 px-0 w-full text-sm text-[#6C727F] bg-transparent border-0 border-b-2 border-gray-300 appearance-none focus:outline-none focus:ring-0 focus:border-blue-600 peer"
-                          placeholder=" "
-                        />
-                        <label className="absolute text-black font-semibold duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6 peer-focus:text-blue-600">
-                          Test Name
-                        </label>
+          {/* Filter Button */}
+          <div className="relative">
+            <button
+              onClick={() => setShowFilter(!showFilter)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <FaFilter className="text-gray-400" />
+              <span className="text-gray-700">
+                {filterOption === "all" ? "All Tests" : 
+                 filterOption === "best" ? "Best Performance" : 
+                 "Lowest Performance"}
+              </span>
+            </button>
+
+            {/* Filter Dropdown */}
+            {showFilter && (
+              <div className="absolute top-full mt-2 right-0 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-10 w-48">
+                <button
+                  onClick={() => {
+                    setFilterOption("all");
+                    setShowFilter(false);
+                  }}
+                  className={`w-full px-4 py-2 text-left hover:bg-gray-50 ${
+                    filterOption === "all" ? "bg-blue-50 text-blue-600" : "text-gray-700"
+                  }`}
+                >
+                  All Tests
+                </button>
+                <button
+                  onClick={() => {
+                    setFilterOption("best");
+                    setShowFilter(false);
+                  }}
+                  className={`w-full px-4 py-2 text-left hover:bg-gray-50 ${
+                    filterOption === "best" ? "bg-blue-50 text-blue-600" : "text-gray-700"
+                  }`}
+                >
+                  Best Performance (80%+)
+                </button>
+                <button
+                  onClick={() => {
+                    setFilterOption("lowest");
+                    setShowFilter(false);
+                  }}
+                  className={`w-full px-4 py-2 text-left hover:bg-gray-50 ${
+                    filterOption === "lowest" ? "bg-blue-50 text-blue-600" : "text-gray-700"
+                  }`}
+                >
+                  Lowest Performance (&lt;50%)
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Results Info */}
+        <div className="text-center mt-4 text-sm text-gray-600">
+          Showing {startIndex + 1}-{Math.min(endIndex, sortedResults.length)} of {sortedResults.length} tests
+        </div>
+      </motion.div>
+
+      {/* Test Cards Grid */}
+      <div className="max-w-7xl mx-auto">
+        {paginatedResults.length === 0 ? (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-12"
+          >
+            <div className="bg-white rounded-xl shadow-sm p-8 max-w-md mx-auto">
+              <p className="text-gray-500 text-lg">
+                {searchQuery || filterOption !== "all" 
+                  ? "No tests match your search criteria." 
+                  : "No past tests found."}
+              </p>
+              <p className="text-sm text-gray-400 mt-2">
+                {searchQuery || filterOption !== "all"
+                  ? "Try adjusting your search or filter options."
+                  : "Your completed tests will appear here."}
+              </p>
+            </div>
+          </motion.div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {paginatedResults.map((test, index) => {
+              // Data calculation logic
+              const hasMainData = test.correct !== undefined && test.incorrect !== undefined && test.unattempted !== undefined;
+              const hasAltData = test.correctAnswersCount !== undefined && test.wrongAnswersCount !== undefined && test.notAttemptedCount !== undefined;
+              
+              let correctValue, incorrectValue, unattemptedValue, totalQuestions;
+              
+              if (hasMainData) {
+                correctValue = test.correct;
+                incorrectValue = test.incorrect;
+                unattemptedValue = test.unattempted;
+                totalQuestions = test.correct + test.incorrect + test.unattempted;
+              } else if (hasAltData) {
+                correctValue = test.correctAnswersCount;
+                incorrectValue = test.wrongAnswersCount;
+                unattemptedValue = test.notAttemptedCount;
+                totalQuestions = test.correctAnswersCount + test.wrongAnswersCount + test.notAttemptedCount;
+              } else {
+                correctValue = 0;
+                incorrectValue = 0;
+                unattemptedValue = 0;
+                totalQuestions = 0;
+              }
+
+              const chartData = [
+                { name: "Correct", value: correctValue, color: CHART_COLORS.correct },
+                { name: "Incorrect", value: incorrectValue, color: CHART_COLORS.incorrect },
+                { name: "Unattempted", value: unattemptedValue, color: CHART_COLORS.unattempted },
+              ];
+
+              const scorePercentage = calculateScore(test);
+
+              return (
+                <motion.div
+                  key={`${test.testName}-${test.testId || index}`}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                  whileHover={{ scale: 1.02 }}
+                  className="h-full"
+                >
+                  <Card className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 h-full overflow-hidden">
+                    {/* Card Header */}
+                    <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <CardTitle className="text-xl font-bold mb-1">
+                            {test.testName || "Unnamed Test"}
+                          </CardTitle>
+                          <CardDescription className="text-blue-100">
+                            {test.subjects ? test.subjects.join(", ") : "No subjects"}
+                          </CardDescription>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-3xl font-bold">
+                            {scorePercentage}%
+                          </div>
+                          <div className="text-xs text-blue-100">Score</div>
+                        </div>
                       </div>
                     </CardHeader>
 
-                    {/* Time & Difficulty */}
-                    <CardContent className="grid grid-cols-2 gap-4">
-                      <div className="relative z-0 w-full mb-4 group">
-                        <input
-                          type="text"
-                          value={test.testId || ""} // Fallback to an empty string
-                          readOnly
-                          className="block py-2.5 px-0 w-full text-sm text-[#6C727F] bg-transparent border-0 border-b-2 border-gray-300 appearance-none focus:outline-none focus:ring-0 focus:border-blue-600 peer"
-                          placeholder=" "
-                        />
-                        <label className="absolute text-black font-semibold duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6 peer-focus:text-blue-600">
-                          Test ID
-                        </label>
+                    <CardContent className="p-6">
+                      {/* Test Info */}
+                      <div className="grid grid-cols-2 gap-4 mb-6">
+                        <div className="bg-gray-50 p-3 rounded-lg">
+                          <label className="text-xs text-gray-500 uppercase tracking-wider block mb-1">
+                            Test ID
+                          </label>
+                          <span className="text-sm font-medium text-gray-900">
+                            {test.testId || "N/A"}
+                          </span>
+                        </div>
+                        <div className="bg-gray-50 p-3 rounded-lg">
+                          <label className="text-xs text-gray-500 uppercase tracking-wider block mb-1">
+                            Difficulty
+                          </label>
+                          <span className="text-sm font-medium text-gray-900">
+                            {test.difficultyLevel || "N/A"}
+                          </span>
+                        </div>
                       </div>
-                      <div
-                        className="relative z-0 w-full mb-4 group"
-                        style={{ width: "110px" }}
-                      >
-                        <input
-                          type="text"
-                          value={test.difficultyLevel || ""} // Fallback to an empty string
-                          readOnly
-                          className="block py-2.5 px-0 w-full text-[13px] md:text-sm text-[#6C727F] bg-transparent border-0 border-b-2 border-gray-300 appearance-none focus:outline-none focus:ring-0 focus:border-blue-600 peer"
-                          placeholder=" "
-                        />
-                        <label className="absolute text-black font-semibold text-[14px] md:text-[16px] duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6 peer-focus:text-blue-600">
-                          Difficulty Level
-                        </label>
-                      </div>
-                    </CardContent>
 
-                    {/* Buttons and Graph Section */}
-                    <div className="grid grid-cols-2 md:gap-6 text-[14px]">
-                      {/* Left - Buttons */}
-                      <div className="flex flex-col space-y-2">
+                      {/* Analytics Section */}
+                      <div className="grid grid-cols-2 gap-6">
+                        {/* Performance Stats */}
+                        <div className="space-y-3">
+                          <h4 className="text-sm font-medium text-gray-600 mb-3">Performance</h4>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between p-2 bg-green-50 rounded">
+                              <span className="text-sm text-green-800">Correct</span>
+                              <span className="font-semibold text-green-900">{correctValue}</span>
+                            </div>
+                            <div className="flex items-center justify-between p-2 bg-red-50 rounded">
+                              <span className="text-sm text-red-800">Incorrect</span>
+                              <span className="font-semibold text-red-900">{incorrectValue}</span>
+                            </div>
+                            <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                              <span className="text-sm text-gray-800">Skipped</span>
+                              <span className="font-semibold text-gray-900">{unattemptedValue}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Chart */}
+                        <div className="flex items-center justify-center">
+                          {totalQuestions > 0 ? (
+                            <PieChart width={130} height={130}>
+                              <Pie
+                                data={chartData}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={30}
+                                outerRadius={55}
+                                dataKey="value"
+                                startAngle={90}
+                                endAngle={-270}
+                              >
+                                {chartData.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                                <Label
+                                  value={totalQuestions}
+                                  position="center"
+                                  className="text-lg font-bold fill-gray-900"
+                                  dy={-8}
+                                />
+                                <Label
+                                  value="Questions"
+                                  position="center"
+                                  className="text-xs fill-gray-500"
+                                  dy={8}
+                                />
+                              </Pie>
+                              <Tooltip content={customTooltip} />
+                            </PieChart>
+                          ) : (
+                            <div className="w-32 h-32 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 text-sm">
+                              No data
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="mt-6 grid grid-cols-2 gap-3">
                         <Link
-                          href={`/review-mistake?test-id=${test.testId}`}  
-                          className="bg-white text-[11px] md:text-[12px] text-[#6C727F] border border-[#6C727F] flex items-center justify-between px-4 py-3 rounded-lg"
+                          href={`/review-mistake?test-id=${test.testId}`}
+                          className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
                         >
-                          Review Mistake <FaChevronDown />
+                          Review Mistakes
+                          <FaChevronRight className="text-xs" />
                         </Link>
                         <Link
                           href="/analytics"
-                          className="bg-white text-[11px] md:text-[12px] text-[#6C727F] border border-[#6C727F] flex items-center justify-between px-4 py-3 rounded-lg"
+                          className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
                         >
-                          View Analytics <FaChevronDown />
+                          View Analytics
+                          <FaChevronRight className="text-xs" />
                         </Link>
                       </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
 
-                      {/* Right - Graph */}
-                      <PieChart width={150} height={150}>
-                        <Pie
-                          data={[ 
-                            { name: "Correct", value: test.correct },
-                            { name: "Wrong", value: test.incorrect },
-                            { name: "Missed", value: test.unattempted },
-                            { name: "Correct", value: test.correctAnswersCount },
-                            { name: "Wrong", value: test.wrongAnswersCount },
-                            { name: "Missed", value: test.notAttemptedCount },
-                          ]}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={40}
-                          outerRadius={60}
-                          fill="#8884d8"
-                          dataKey="value"
-                        >
-                          <Cell fill={COLORS[0]} />
-                          <Cell fill={COLORS[1]} />
-                          <Cell fill={COLORS[2]} />
-                          <Cell fill={COLORS[3]} />
-                          <Cell fill={COLORS[4]} />
-                          <Cell fill={COLORS[5]} />
-                          <Label
-                            value={totalQuestions || testQuestion}
-                            position="center"
-                            className="text-lg font-bold fill-gray-900"
-                            dy={-10}
-                          />
-                          <Label
-                            value="Total Questions"
-                            position="center"
-                            className="text-[10px] fill-gray-500"
-                            dy={10}
-                          />
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </div>
-                  </form>
-                </Card>
-              </motion.div>
-            );
-          })
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="mt-12 flex justify-center items-center gap-4"
+          >
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
+                currentPage === 1
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-300"
+              }`}
+            >
+              <FaChevronLeft className="text-sm" />
+              Previous
+            </button>
+
+            <div className="flex items-center gap-2">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                // Show first page, last page, current page, and pages around current page
+                if (
+                  page === 1 ||
+                  page === totalPages ||
+                  Math.abs(page - currentPage) <= 1
+                ) {
+                  return (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`w-10 h-10 rounded-lg ${
+                        currentPage === page
+                          ? "bg-blue-600 text-white"
+                          : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-300"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  );
+                } else if (
+                  page === currentPage - 2 ||
+                  page === currentPage + 2
+                ) {
+                  return <span key={page} className="text-gray-400">...</span>;
+                }
+                return null;
+              })}
+            </div>
+
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
+                currentPage === totalPages
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-300"
+              }`}
+            >
+              Next
+              <FaChevronRight className="text-sm" />
+            </button>
+          </motion.div>
         )}
       </div>
     </div>
