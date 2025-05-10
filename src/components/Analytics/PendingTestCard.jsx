@@ -18,14 +18,15 @@ const PendingTestCard = ({ selectedFilter }) => {
     const fetchPendingTests = async () => {
       try {
         setLoading(true);
+        setError(null);
         const token = localStorage.getItem("authToken");
-        
+
         if (!token) {
-          setError("Authentication required");
+          setError("Authentication required.");
           setLoading(false);
           return;
         }
-        
+
         const response = await axios.get(
           `${process.env.NEXT_PUBLIC_API_BASE_URL}/dashboard/pending`,
           {
@@ -35,41 +36,60 @@ const PendingTestCard = ({ selectedFilter }) => {
           }
         );
 
-        // Filter the pending tests
-        const pendingTestsData = response.data.filter(
-          (test) => test.status === "pending"
-        );
+        const responseData = response.data;
+
+        // If response is a message object or no tests
+        if (!Array.isArray(responseData)) {
+          setMessage(responseData.message || "You're all caught up with your tests!");
+          setLoading(false);
+          return;
+        }
+
+        const pendingTestsData = responseData.filter((test) => test.status === "pending");
 
         if (pendingTestsData.length > 0) {
-          // Format data for the UI with time ago
           const formattedData = pendingTestsData.map((test) => ({
             testName: test.testName || "Pending Test",
             updatedAt: new Date(test.updatedAt),
             timeAgo: formatDistanceToNow(new Date(test.updatedAt), { addSuffix: true }),
             dueDate: test.dueDate ? new Date(test.dueDate) : null,
-            dueSoon: test.dueDate ? (new Date(test.dueDate) - new Date()) / (1000 * 60 * 60 * 24) < 3 : false,
+            dueSoon: test.dueDate
+              ? (new Date(test.dueDate) - new Date()) / (1000 * 60 * 60 * 24) < 3
+              : false,
             icon: <FaClipboardList />,
-            bgColor: "bg-amber-100 text-amber-600", // Default colors
+            bgColor: "bg-amber-100 text-amber-600",
           }));
 
-          // Sort by updatedAt (most recent first)
           formattedData.sort((a, b) => b.updatedAt - a.updatedAt);
-
           setData(formattedData);
         } else {
-          setMessage("Congratulations! You have no pending tests.");
+          setMessage("You're all caught up with your tests!");
         }
-        
+
         setLoading(false);
       } catch (error) {
-        console.error("Error fetching pending tests:", error);
-        setError("We couldn't load your pending tests at the moment.");
+        if (process.env.NODE_ENV === "development") {
+          console.error("Pending tests fetch error:", error.message);
+        }
+
+        // Custom error message based on status code
+        if (axios.isAxiosError(error)) {
+          if (error.response?.status === 404) {
+            setMessage("No pending tests found.");
+          } else {
+            setError("We couldn't load your pending tests. Please try again later.");
+          }
+        } else {
+          setError("An unexpected error occurred.");
+        }
+
         setLoading(false);
       }
     };
 
     fetchPendingTests();
   }, [selectedFilter]);
+
 
   // Loading state
   if (loading) {
@@ -110,7 +130,7 @@ const PendingTestCard = ({ selectedFilter }) => {
           <FiAlertCircle className="text-amber-500 text-4xl mb-3" />
           <h3 className="text-lg font-semibold text-gray-800 mb-1">Data Unavailable</h3>
           <p className="text-gray-600 mb-4">{error}</p>
-          <button 
+          <button
             onClick={() => window.location.reload()}
             className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
           >
@@ -147,8 +167,8 @@ const PendingTestCard = ({ selectedFilter }) => {
         ) : (
           <div className="space-y-3">
             {data.map((item, index) => (
-              <div 
-                key={index} 
+              <div
+                key={index}
                 className="flex items-center p-4 rounded-xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
               >
                 {/* Icon with Background */}
@@ -163,18 +183,17 @@ const PendingTestCard = ({ selectedFilter }) => {
                     <FiClock size={12} />
                     <span>Last Updated: {item.timeAgo}</span>
                   </div>
-                  
+
                   {item.dueDate && (
                     <div className="mt-1 text-xs">
-                      <span className={`px-2 py-0.5 rounded-full ${
-                        item.dueSoon ? "bg-red-100 text-red-600" : "bg-blue-100 text-blue-600"
-                      }`}>
+                      <span className={`px-2 py-0.5 rounded-full ${item.dueSoon ? "bg-red-100 text-red-600" : "bg-blue-100 text-blue-600"
+                        }`}>
                         Due: {item.dueDate.toLocaleDateString()}
                       </span>
                     </div>
                   )}
                 </div>
-                
+
                 {/* Status indicator */}
                 {item.dueSoon ? (
                   <FaExclamationTriangle className="text-red-500" />
@@ -183,7 +202,7 @@ const PendingTestCard = ({ selectedFilter }) => {
                 )}
               </div>
             ))}
-            
+
             {/* Action button at the bottom */}
             <div className="pt-3 flex justify-center">
               <button className="w-full py-2 bg-blue-100 text-blue-700 rounded-lg font-medium hover:bg-blue-200 transition-colors text-sm">

@@ -53,7 +53,23 @@ const NavBar = () => {
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
-        const response = await axios.get(`${apiBaseUrl}/newadmin/test-data`);
+         const token = localStorage.getItem("authToken");
+
+        if (!token) {
+          router.push("/login");
+          return;
+        }
+        console.log(token);
+        // Send POST request with decoded token in body
+        const response = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_BASE_URL}/newadmin/upcomingtest-data`, // Send decoded info here
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`, // Optional if backend uses auth header
+            },
+          }
+        );
         const tests = response.data.tests;
         const currentDate = new Date();
 

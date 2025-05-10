@@ -152,12 +152,12 @@ const ReviewMistake = () => {
               </p>
             </div>
 
-            <div className="mt-4">
+            {/* <div className="mt-4">
               <p className="text-sm font-semibold text-gray-600">Time Taken</p>
               <div className="border p-2 rounded-md border-yellow-400 inline-block">
                 {item.timeSpent || "Time not recorded"}
               </div>
-            </div>
+            </div> */}
           </motion.div>
         ))}
       </motion.div>

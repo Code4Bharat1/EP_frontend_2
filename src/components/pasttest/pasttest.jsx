@@ -1,5 +1,4 @@
 "use client";
-
 import { motion } from "framer-motion";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -42,6 +41,7 @@ const PastTest = () => {
           }
         );
         setTestResults(response.data.testAnalytics);
+        console.log(response.data.testAnalytics);
       } catch (err) {
         setError("Failed to fetch past test results");
         console.error(err);
@@ -61,7 +61,6 @@ const PastTest = () => {
     <div className="p-6">
       {/* Heading */}
       <div className="flex justify-center items-center">
-        {/* Heading */}
         <div className="text-center w-52 bg-[#49A6CF] text-white py-3 rounded-lg text-xl font-semibold">
           Past Test
         </div>
@@ -87,7 +86,7 @@ const PastTest = () => {
               test.notAttemptedCount;
             return (
               <motion.div
-                key={test.id}
+                key={`${test.testName}-${test.subjects.join(",")}-${index}`} // Unique key by combining relevant properties
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
@@ -99,7 +98,7 @@ const PastTest = () => {
                       <div className="relative z-0 w-full mb-4 group">
                         <input
                           type="text"
-                          value={test.subjects.join(", ")} // Subjects are joined by comma
+                          value={test.subjects ? test.subjects.join(", ") : ""} // Fallback to an empty string
                           readOnly
                           className="block py-2.5 px-0 w-full text-sm text-[#6C727F] bg-transparent border-0 border-b-2 border-gray-300 appearance-none focus:outline-none focus:ring-0 focus:border-blue-600 peer"
                           placeholder=" "
@@ -113,7 +112,7 @@ const PastTest = () => {
                       <div className="relative z-0 w-full mb-4 group">
                         <input
                           type="text"
-                          value={test.testName}
+                          value={test.testName || ""} // Fallback to an empty string if testName is null or undefined
                           readOnly
                           className="block py-2.5 px-0 w-full text-sm text-[#6C727F] bg-transparent border-0 border-b-2 border-gray-300 appearance-none focus:outline-none focus:ring-0 focus:border-blue-600 peer"
                           placeholder=" "
@@ -129,13 +128,13 @@ const PastTest = () => {
                       <div className="relative z-0 w-full mb-4 group">
                         <input
                           type="text"
-                          value={test.questionTimeUsed}
+                          value={test.testId || ""} // Fallback to an empty string
                           readOnly
                           className="block py-2.5 px-0 w-full text-sm text-[#6C727F] bg-transparent border-0 border-b-2 border-gray-300 appearance-none focus:outline-none focus:ring-0 focus:border-blue-600 peer"
                           placeholder=" "
                         />
                         <label className="absolute text-black font-semibold duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6 peer-focus:text-blue-600">
-                          Time
+                          Test ID
                         </label>
                       </div>
                       <div
@@ -144,7 +143,7 @@ const PastTest = () => {
                       >
                         <input
                           type="text"
-                          value={test.difficultyLevel}
+                          value={test.difficultyLevel || ""} // Fallback to an empty string
                           readOnly
                           className="block py-2.5 px-0 w-full text-[13px] md:text-sm text-[#6C727F] bg-transparent border-0 border-b-2 border-gray-300 appearance-none focus:outline-none focus:ring-0 focus:border-blue-600 peer"
                           placeholder=" "
@@ -160,19 +159,13 @@ const PastTest = () => {
                       {/* Left - Buttons */}
                       <div className="flex flex-col space-y-2">
                         <Link
-                          href="#"
+                          href={`/review-mistake?test-id=${test.testId}`}  
                           className="bg-white text-[11px] md:text-[12px] text-[#6C727F] border border-[#6C727F] flex items-center justify-between px-4 py-3 rounded-lg"
                         >
                           Review Mistake <FaChevronDown />
                         </Link>
                         <Link
-                          href="#"
-                          className="bg-white text-[11px] md:text-[12px] text-[#6C727F] border border-[#6C727F] flex items-center justify-between px-4 py-3 rounded-lg"
-                        >
-                          Retake Test <FaChevronDown />
-                        </Link>
-                        <Link
-                          href="#"
+                          href="/analytics"
                           className="bg-white text-[11px] md:text-[12px] text-[#6C727F] border border-[#6C727F] flex items-center justify-between px-4 py-3 rounded-lg"
                         >
                           View Analytics <FaChevronDown />
@@ -182,14 +175,11 @@ const PastTest = () => {
                       {/* Right - Graph */}
                       <PieChart width={150} height={150}>
                         <Pie
-                          data={[
+                          data={[ 
                             { name: "Correct", value: test.correct },
                             { name: "Wrong", value: test.incorrect },
                             { name: "Missed", value: test.unattempted },
-                            {
-                              name: "Correct",
-                              value: test.correctAnswersCount,
-                            },
+                            { name: "Correct", value: test.correctAnswersCount },
                             { name: "Wrong", value: test.wrongAnswersCount },
                             { name: "Missed", value: test.notAttemptedCount },
                           ]}

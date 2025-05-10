@@ -84,7 +84,20 @@ const ResultPage = () => {
   }, []);
 
   const handleRetakeTest = () => {
-    router.push("/testinterface");
+    const startTestData = JSON.parse(localStorage.getItem("startTest"));
+
+    if (startTestData) {
+      const { subject, chapter, allocatedQuestions } = startTestData;
+
+    router.push(
+      `/testinterfaceplan?chapter=${encodeURIComponent(
+        chapter
+      )}&allocatedQuestions=${allocatedQuestions}&subject=${subject}`
+    );
+  }else {
+    alert("Test data not found. Please go back and select a test again.");
+  }
+
     localStorage.removeItem("examplan");
   };
 

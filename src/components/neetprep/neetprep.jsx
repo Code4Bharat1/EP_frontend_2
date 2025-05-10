@@ -81,7 +81,8 @@ const NeetPrep = () => {
       };
 
       // Store the subject in localStorage to filter questions later
-      localStorage.setItem("selectedSubject", subject);
+      localStorage.setItem("selectedSubjects", JSON.stringify([subject]));
+
 
       // Store the object as a JSON string in localStorage
       localStorage.setItem("startTest", JSON.stringify(startTestData));
