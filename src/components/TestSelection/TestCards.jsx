@@ -7,7 +7,7 @@ const TestCards = () => {
   const router = useRouter();
 
   const cards = [
-    { title: "EXAM PLAN", icon: <FaShieldAlt className="w-5 h-5" />, route: "/examplan" },
+    { title: "FAST QUIZ", icon: <FaShieldAlt className="w-5 h-5" />, route: "/fastquiz" },
     { title: "START TEST", icon: <FaShoppingBag className="w-5 h-5" />, route: "/testinterface" },
     { title: "CREATE TEST", icon: <FaShieldVirus className="w-5 h-5" />, route: "/createtest" },
   ];

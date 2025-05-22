@@ -11,6 +11,7 @@ import {
   FaChartLine,  // ✅ New Icon for Analytics
   FaMedal,      // ✅ New Icon for Leaderboard
   FaUniversity,
+  FaCookie,
 } from 'react-icons/fa';
 
 const Sidebar = ({ isOpen }) => {
@@ -58,16 +59,16 @@ const Sidebar = ({ isOpen }) => {
               <span className="text-md">Analytics</span>
             </Link>
           </li>
-          {/* <li className="hover:text-gray-200"> */}
-            {/* <Link href="/result" className="flex items-center space-x-3"> */}
-              {/* <FaMedal className="text-lg" /> ✅ Updated for Leaderboard */}
-              {/* <span className="text-md">Leaderboard</span> */}
-            {/* </Link> */}
-          {/* </li> */}
           <li className="hover:text-gray-200">
             <Link href="/colleges" className="flex items-center space-x-3">
               <FaUniversity className="text-lg" />
               <span className="text-md">Colleges</span>
+            </Link>
+          </li>
+          <li className="hover:text-gray-200">
+            <Link href="/credits" className="flex items-center space-x-3">
+              <FaCookie className="text-lg" /> { /*✅Updated for Leaderboard*/}
+              <span className="text-md">Credits</span>
             </Link>
           </li>
         </ul>

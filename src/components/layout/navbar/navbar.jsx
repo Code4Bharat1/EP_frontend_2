@@ -10,6 +10,8 @@ import {
 import { MdAccountCircle, MdLogout } from "react-icons/md";
 import axios from "axios";
 import Link from "next/link";
+import { FaCoins, FaCookie, FaMedal } from "react-icons/fa";
+import { jwtDecode } from "jwt-decode";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -23,6 +25,30 @@ const NavBar = () => {
 
   const [profileImage, setProfileImage] = useState("/profile.jpg");
   const [notifications, setNotifications] = useState([]);
+  const [result, setResults] = useState(null);
+
+
+  //useEffect to fetch the Points of the student
+  useEffect(()=>{
+    const fetchResults = async () => {
+      try {
+        const token = localStorage.getItem("authToken");
+        if(!token) throw new Error("Token not found");
+
+        const decoded = jwtDecode(token);
+        const id = decoded.id;
+
+        const response = await axios.post(`${process.env.NEXT_PUBLIC_API_BASE_URL}/review/credits`,{
+          studentId : id,
+        });
+        setResults(response.data.totals.overallTotal);
+      }catch(error){
+        console.error(error);
+        
+      }
+    }
+    fetchResults();
+  },[])
 
   // Fetch profile image from the backend API
   useEffect(() => {
@@ -164,6 +190,12 @@ const NavBar = () => {
           </label>
           <IoMoonOutline className="text-white text-2xl" />
         </div> */}
+
+        {/* Credits Section */}
+        <div className="flex items-center bg-gray-600 px-3 space-x-2 py-1 rounded-sm" title="Cookies">
+          <FaCookie className="text-xl text-yellow-400"/>
+          <p className="text-lg text-white">{result}</p>
+        </div>
 
         {/* Notifications */}
         <div className="relative cursor-pointer" ref={notificationsRef}>
