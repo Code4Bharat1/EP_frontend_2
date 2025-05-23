@@ -2,55 +2,76 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { IoMdNotifications } from "react-icons/io";
-import {
-  IoSettingsOutline,
-  IoMoonOutline,
-  IoSunnyOutline,
-} from "react-icons/io5";
 import { MdAccountCircle, MdLogout } from "react-icons/md";
 import axios from "axios";
 import Link from "next/link";
-import { FaCoins, FaCookie, FaMedal } from "react-icons/fa";
+import { FaCookie } from "react-icons/fa";
 import { jwtDecode } from "jwt-decode";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 const NavBar = () => {
   const router = useRouter();
-  const [darkMode, setDarkMode] = useState(false);
   const [profileMenu, setProfileMenu] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const profileRef = useRef(null);
   const notificationsRef = useRef(null);
-
   const [profileImage, setProfileImage] = useState("/profile.jpg");
   const [notifications, setNotifications] = useState([]);
   const [result, setResults] = useState(null);
 
+  const [colors, setColors] = useState({
+    navbarColor: "#27759C",
+    sidebarColor: "#0E2936",
+    textColor: "#ffffff",
+  });
 
-  //useEffect to fetch the Points of the student
-  useEffect(()=>{
-    const fetchResults = async () => {
+  // Fetch admin-defined colors
+  useEffect(() => {
+    const fetchAdminColors = async () => {
       try {
         const token = localStorage.getItem("authToken");
-        if(!token) throw new Error("Token not found");
+        if (!token) return;
 
         const decoded = jwtDecode(token);
         const id = decoded.id;
 
-        const response = await axios.post(`${process.env.NEXT_PUBLIC_API_BASE_URL}/review/credits`,{
-          studentId : id,
+        const response = await axios.post(`${apiBaseUrl}/newadmin/studentcolors`, {
+          studentId: id,
+        });
+
+        const { navbarColor, sidebarColor, textColor } = response.data.colors;
+        setColors({ navbarColor, sidebarColor, textColor });
+      } catch (error) {
+        console.error("Error fetching admin colors:", error);
+      }
+    };
+
+    fetchAdminColors();
+  }, []);
+
+  // Fetch student points
+  useEffect(() => {
+    const fetchResults = async () => {
+      try {
+        const token = localStorage.getItem("authToken");
+        if (!token) throw new Error("Token not found");
+
+        const decoded = jwtDecode(token);
+        const id = decoded.id;
+
+        const response = await axios.post(`${apiBaseUrl}/review/credits`, {
+          studentId: id,
         });
         setResults(response.data.totals.overallTotal);
-      }catch(error){
+      } catch (error) {
         console.error(error);
-        
       }
-    }
+    };
     fetchResults();
-  },[])
+  }, []);
 
-  // Fetch profile image from the backend API
+  // Fetch profile image
   useEffect(() => {
     const fetchProfileImage = async () => {
       try {
@@ -65,7 +86,7 @@ const NavBar = () => {
         });
 
         if (response.status === 200 && response.data.profileImage) {
-          setProfileImage(response.data.profileImage); // Set the profile image from backend
+          setProfileImage(response.data.profileImage);
         }
       } catch (error) {
         console.error("Error fetching profile image:", error);
@@ -75,24 +96,21 @@ const NavBar = () => {
     fetchProfileImage();
   }, [router]);
 
-  // Fetch notifications dynamically based on test start and end dates
+  // Fetch notifications
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
-         const token = localStorage.getItem("authToken");
-
+        const token = localStorage.getItem("authToken");
         if (!token) {
           router.push("/login");
           return;
         }
-        console.log(token);
-        // Send POST request with decoded token in body
+
         const response = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/newadmin/upcomingtest-data`, // Send decoded info here
+          `${apiBaseUrl}/newadmin/upcomingtest-data`,
           {
             headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`, // Optional if backend uses auth header
+              Authorization: `Bearer ${token}`,
             },
           }
         );
@@ -102,21 +120,19 @@ const NavBar = () => {
         const newNotifications = [];
 
         tests.forEach((test) => {
-          const examStartDate = new Date(test.exam_start_date);
-          const examEndDate = new Date(test.exam_end_date);
+          const start = new Date(test.exam_start_date);
+          const end = new Date(test.exam_end_date);
 
-          // Check if the exam_start_date matches today
-          if (examStartDate.toDateString() === currentDate.toDateString()) {
+          if (start.toDateString() === currentDate.toDateString()) {
             newNotifications.push(`New test - ${test.testname}`);
           }
 
-          // Check if the exam_end_date matches today (Last day notification)
-          if (examEndDate.toDateString() === currentDate.toDateString()) {
+          if (end.toDateString() === currentDate.toDateString()) {
             newNotifications.push(`Last day for the test - ${test.testname}`);
           }
         });
 
-        setNotifications(newNotifications); // Set the notifications state
+        setNotifications(newNotifications);
       } catch (error) {
         console.error("Error fetching notifications:", error);
       }
@@ -125,19 +141,12 @@ const NavBar = () => {
     fetchNotifications();
   }, []);
 
-  // Toggle Dark Mode
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-    document.documentElement.classList.toggle("dark");
-  };
-
-  // Toggle Profile Dropdown
+  // Handle dropdowns
   const toggleProfileMenu = () => {
     setProfileMenu(!profileMenu);
-    setNotificationsOpen(false); // Close notifications if profile is opened
+    setNotificationsOpen(false);
   };
 
-  // Toggle Notifications Popup
   const toggleNotifications = () => {
     setNotificationsOpen(!notificationsOpen);
     setProfileMenu(false);
@@ -157,43 +166,28 @@ const NavBar = () => {
     };
 
     document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   return (
-    <div className="hidden md:flex w-full bg-gradient-to-r from-[#27759C] to-[#0E2936] px-8 py-4 items-center justify-between relative">
-      {/* Left Section - Search Bar */}
+    <div
+      className="hidden md:flex w-full px-8 py-4 items-center justify-between relative"
+      style={{
+        background: `linear-gradient(to right, ${colors.navbarColor}, ${colors.sidebarColor})`,
+        color: colors.textColor,
+      }}
+    >
       <div className="flex items-center flex-grow max-w-md">
-        {/* Your previous search bar logic can be added here */}
+        {/* Placeholder for left section */}
       </div>
 
-      {/* Right Section - Icons */}
       <div className="flex items-center space-x-5">
-        {/* Light/Dark Mode Toggle */}
-        {/* <div className="flex items-center space-x-2">
-          <IoSunnyOutline className="text-white text-2xl" />
-          <label className="relative flex cursor-pointer items-center">
-            <input
-              type="checkbox"
-              className="sr-only peer"
-              onClick={toggleDarkMode}
-            />
-            <div className="w-10 h-5 bg-gray-300 rounded-full peer-checked:bg-blue-600 transition duration-300 flex items-center">
-              <div
-                className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform ${
-                  darkMode ? "translate-x-5" : "translate-x-1"
-                }`}
-              ></div>
-            </div>
-          </label>
-          <IoMoonOutline className="text-white text-2xl" />
-        </div> */}
-
         {/* Credits Section */}
-        <div className="flex items-center bg-gray-600 px-3 space-x-2 py-1 rounded-sm" title="Cookies">
-          <FaCookie className="text-xl text-yellow-400"/>
+        <div
+          className="flex items-center bg-gray-600 px-3 space-x-2 py-1 rounded-sm"
+          title="Cookies"
+        >
+          <FaCookie className="text-xl text-yellow-400" />
           <p className="text-lg text-white">{result}</p>
         </div>
 
@@ -207,7 +201,6 @@ const NavBar = () => {
             {notifications.length}
           </span>
 
-          {/* Notifications Popup */}
           {notificationsOpen && (
             <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg py-2 z-50">
               <div className="px-4 py-2 text-gray-700 font-semibold border-b">
@@ -233,22 +226,15 @@ const NavBar = () => {
           )}
         </div>
 
-        {/* Settings */}
-        {/* <IoSettingsOutline
-          className="text-3xl text-white cursor-pointer"
-          onClick={() => router.push("/settings")}
-        /> */}
-
         {/* Profile Dropdown */}
         <div className="relative" ref={profileRef}>
           <img
-            src={profileImage} // Profile image fetched from the backend
+            src={profileImage}
             alt="Profile"
             className="w-10 h-10 rounded-lg border border-gray-300 cursor-pointer"
             onClick={toggleProfileMenu}
           />
 
-          {/* Dropdown Menu */}
           {profileMenu && (
             <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-50">
               <button

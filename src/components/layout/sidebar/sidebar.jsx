@@ -1,26 +1,69 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
   FaTachometerAlt,
   FaBullseye,
   FaClipboardList,
-  FaPoll,       // ✅ New Icon for Result
-  FaChartLine,  // ✅ New Icon for Analytics
-  FaMedal,      // ✅ New Icon for Leaderboard
+  FaPoll,
+  FaChartLine,
   FaUniversity,
   FaCookie,
 } from 'react-icons/fa';
+import axios from 'axios';
+import {jwtDecode} from 'jwt-decode';
+
+const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 const Sidebar = ({ isOpen }) => {
+  const [colors, setColors] = useState({
+    sidebarColor: '#0077B6', // default fallback sidebar color
+    textColor: '#ffffff',     // default fallback text color
+  });
+
+  useEffect(() => {
+    const fetchSidebarColors = async () => {
+      try {
+        const token = localStorage.getItem('authToken');
+        if (!token) return;
+
+        const decoded = jwtDecode(token);
+        const studentId = decoded.id;
+
+        const response = await axios.post(`${apiBaseUrl}/newadmin/studentcolors`, {
+          studentId,
+        });
+
+        console.log(response.data.colors);
+
+        if (response.data && response.data.colors) {
+          const { sidebarColor, textColor } = response.data.colors;
+
+          setColors({
+            sidebarColor: sidebarColor || '#0077B6',
+            textColor: textColor || '#ffffff',
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch sidebar colors:', error);
+      }
+    };
+
+    fetchSidebarColors();
+  }, []);
+
   return (
-    <div className='hidden md:block md:w-1/6'>
+    <div className="hidden md:block md:w-1/6">
       <div
-        className={`fixed top-0 left-0 h-full bg-gradient-to-b from-[#0077B6] to-[#ADE8F4] text-white transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 left-0 h-full transition-transform duration-300 ease-in-out ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         } md:translate-x-0 md:relative flex flex-col`}
+        style={{
+          backgroundColor: colors.sidebarColor,
+          color: colors.textColor,
+        }}
       >
         {/* Logo Section */}
         <div className="p-4 flex justify-center">
@@ -29,48 +72,22 @@ const Sidebar = ({ isOpen }) => {
 
         {/* Sidebar Menu */}
         <ul className="flex flex-col space-y-8 px-6 text-lg mt-10">
-          <li className="hover:text-gray-200">
-            <Link href="/dashboard" className="flex items-center space-x-3">
-              <FaTachometerAlt className="text-lg" />
-              <span className="text-md">Dashboard</span>
-            </Link>
-          </li>
-          <li className="hover:text-gray-200">
-            <Link href="/goalsetup" className="flex items-center space-x-3">
-              <FaBullseye className="text-lg" />
-              <span className="text-md">Exam Plan</span>
-            </Link>
-          </li>
-          <li className="hover:text-gray-200">
-            <Link href="/testselection" className="flex items-center space-x-3">
-              <FaClipboardList className="text-lg" />
-              <span className="text-md">Test</span>
-            </Link>
-          </li>
-          <li className="hover:text-gray-200">
-            <Link href="/pasttest" className="flex items-center space-x-3">
-              <FaPoll className="text-lg" /> {/* ✅ Updated for Result */}
-              <span className="text-md">Result</span>
-            </Link>
-          </li>
-          <li className="hover:text-gray-200">
-            <Link href="/analytics" className="flex items-center space-x-3">
-              <FaChartLine className="text-lg" /> {/* ✅ Updated for Analytics */}
-              <span className="text-md">Analytics</span>
-            </Link>
-          </li>
-          <li className="hover:text-gray-200">
-            <Link href="/colleges" className="flex items-center space-x-3">
-              <FaUniversity className="text-lg" />
-              <span className="text-md">Colleges</span>
-            </Link>
-          </li>
-          <li className="hover:text-gray-200">
-            <Link href="/credits" className="flex items-center space-x-3">
-              <FaCookie className="text-lg" /> { /*✅Updated for Leaderboard*/}
-              <span className="text-md">Credits</span>
-            </Link>
-          </li>
+          {[
+            { href: '/dashboard', icon: FaTachometerAlt, label: 'Dashboard' },
+            { href: '/goalsetup', icon: FaBullseye, label: 'Exam Plan' },
+            { href: '/testselection', icon: FaClipboardList, label: 'Test' },
+            { href: '/pasttest', icon: FaPoll, label: 'Result' },
+            { href: '/analytics', icon: FaChartLine, label: 'Analytics' },
+            { href: '/colleges', icon: FaUniversity, label: 'Colleges' },
+            { href: '/credits', icon: FaCookie, label: 'Credits' },
+          ].map(({ href, icon: Icon, label }) => (
+            <li key={href} className="hover:opacity-80 cursor-pointer">
+              <Link href={href} className="flex items-center space-x-3" style={{ color: colors.textColor }}>
+                <Icon className="text-lg" />
+                <span className="text-md">{label}</span>
+              </Link>
+            </li>
+          ))}
         </ul>
       </div>
     </div>
