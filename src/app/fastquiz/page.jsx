@@ -55,7 +55,7 @@ const Page = () => {
             name: 'Hard', 
             description: 'Expert level questions',
             botDescription: 'The Hard Bot doesn\'t hold back. Prepare for complex problems that will push your critical thinking and problem-solving skills to the limit.',
-            Imagepath: "/Hard-level-bot.png",
+            Imagepath: "/hard-level-bot.png",
             color: 'red'
         }
     ];

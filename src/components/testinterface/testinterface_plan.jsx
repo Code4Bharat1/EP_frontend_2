@@ -428,7 +428,7 @@ const TestInterface = () => {
 
       <div className="flex flex-grow p-4">
         {/* Question Section */}
-        <div className="w-3/4 pr-4">
+        <div className="w-3/4 pr-4 select-none">
           <div className="bg-white rounded-xl shadow-sm overflow-hidden h-full flex flex-col">
             {/* Question Header */}
             <div className="bg-gray-50 px-6 py-3 border-b border-gray-200 flex justify-between items-center">

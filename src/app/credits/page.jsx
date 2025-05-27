@@ -438,7 +438,7 @@ const Page = () => {
             <div className="flex flex-col gap-6">
              <div className='flex gap-10 justify-center'>
               <div className=''>
-                <Image src="/Scholarship-Image.png" className='w-[800px] h-[410px] rounded-md shadow-md max-w-800' alt='Scholarship Image' height={800} width={800} />
+                <Image src="/scholarship-Image.png" className='w-[800px] h-[410px] rounded-md shadow-md max-w-800' alt='Scholarship Image' height={800} width={800} />
               </div>  
                {/* Recent Activity */}
               <div className="bg-white rounded-2xl shadow-md w-full overflow-hidden h-full">

@@ -568,7 +568,7 @@ const TestInterface = () => {
       {/* Main Content with Enhanced Layout */}
       <div className="max-w-7xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Enhanced Question Section */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 select-none">
           <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-100 p-8 relative overflow-hidden">
             {/* Animated Background Effect */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-100/20 to-purple-100/20 rounded-full filter blur-3xl -translate-y-20 translate-x-20"></div>

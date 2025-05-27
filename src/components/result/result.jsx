@@ -5,78 +5,54 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import Confetti from "react-confetti";
 import { useWindowSize } from "react-use";
-import { FaFlask, FaAtom, FaDna, FaEye } from "react-icons/fa";
+import { FaFlask, FaAtom, FaDna } from "react-icons/fa";
 
-// Icon and background color mappings for subjects
 const subjectMapping = {
   Physics: {
     icon: <FaAtom className="text-red-500 text-xl" />,
     bgColor: "bg-red-100",
+    score: 23,
+    max: 180,
   },
   Chemistry: {
     icon: <FaFlask className="text-yellow-500 text-xl" />,
     bgColor: "bg-yellow-100",
+    score: 20,
+    max: 180,
   },
   Biology: {
     icon: <FaDna className="text-green-500 text-xl" />,
     bgColor: "bg-green-100",
-  },
-  Botany: {
-    icon: <FaEye className="text-purple-500 text-xl" />,
-    bgColor: "bg-purple-100",
+    score: 40,
+    max: 360,
   },
 };
 
 const ResultPage = () => {
   const router = useRouter();
   const { width, height } = useWindowSize();
-
-  const [score, setScore] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
   const [subjects, setSubjects] = useState([]);
-  const [examplan, setExamplan] = useState([]);
+  const [totalScore, setTotalScore] = useState(0);
+  const [totalMax, setTotalMax] = useState(0);
 
   useEffect(() => {
-    const storedExamplan = JSON.parse(localStorage.getItem("examplan")) || [];
-    setExamplan(storedExamplan);
+    // Convert mapping object to array
+    const subjectArray = Object.keys(subjectMapping).map((key) => ({
+      name: key,
+      ...subjectMapping[key],
+    }));
 
-    // Calculate overall score: +4 for correct, -1 for incorrect
-    let totalScore = 0;
-    storedExamplan.forEach((answer) => {
-      totalScore += answer.isCorrect ? 4 : -1;
-    });
-    const maxOverall = storedExamplan.length * 4;
-    setScore(totalScore);
+    setSubjects(subjectArray);
 
-    // Calculate subject-wise scores
-    const subjectsObj = {};
-    storedExamplan.forEach((answer) => {
-      if (!subjectsObj[answer.subject]) {
-        subjectsObj[answer.subject] = { score: 0, count: 0 };
-      }
-      subjectsObj[answer.subject].score += answer.isCorrect ? 4 : -1;
-      subjectsObj[answer.subject].count += 1;
-    });
+    const total = subjectArray.reduce((acc, subj) => acc + subj.score, 0);
+    const max = subjectArray.reduce((acc, subj) => acc + subj.max, 0);
 
-    // Retrieve selected subjects from localStorage
-    const selectedSubjects =
-      JSON.parse(localStorage.getItem("selectedSubjects")) || [];
-    const computedSubjects = selectedSubjects.map((subj) => {
-      const subjectData = subjectMapping[subj];
-      const subjectScore = subjectsObj[subj]?.score || 0;
-      const subjectCount = subjectsObj[subj]?.count || 0;
-      return {
-        name: subj,
-        score: subjectScore,
-        max: subjectCount * 4,
-        icon: subjectData?.icon || <FaAtom className="text-gray-500 text-xl" />,
-        bgColor: subjectData?.bgColor || "bg-gray-100",
-      };
-    });
-    setSubjects(computedSubjects);
+    setTotalScore(total);
+    setTotalMax(max);
 
-    // Show confetti if overall percentage is 70% or higher
-    if (maxOverall > 0 && (totalScore / maxOverall) * 100 >= 70) {
+    // Show confetti if percentage >= 70%
+    if ((total / max) * 100 >= 70) {
       setShowConfetti(true);
       const timer = setTimeout(() => setShowConfetti(false), 6000);
       return () => clearTimeout(timer);
@@ -84,37 +60,17 @@ const ResultPage = () => {
   }, []);
 
   const handleRetakeTest = () => {
-    const startTestData = JSON.parse(localStorage.getItem("startTest"));
-
-    if (startTestData) {
-      const { subject, chapter, allocatedQuestions } = startTestData;
-
-    router.push(
-      `/testinterfaceplan?chapter=${encodeURIComponent(
-        chapter
-      )}&allocatedQuestions=${allocatedQuestions}&subject=${subject}`
-    );
-  }else {
-    alert("Test data not found. Please go back and select a test again.");
-  }
-
-    localStorage.removeItem("examplan");
+    router.push("/testinterfaceplan?subject=Physics&chapter=Motion&allocatedQuestions=45");
   };
 
   return (
     <div className="h-screen w-screen overflow-hidden flex items-center justify-center bg-gray-100 relative">
-      {/* Confetti Animation (Only if overall percentage >= 70%) */}
       {showConfetti && (
-        <Confetti
-          width={width}
-          height={height}
-          numberOfPieces={500}
-          recycle={false}
-        />
+        <Confetti width={width} height={height} numberOfPieces={500} recycle={false} />
       )}
 
       <div className="w-full h-full flex flex-col md:flex-row bg-white shadow-lg">
-        {/* Left Section - Overall Score Display */}
+        {/* Left Section - Overall Score */}
         <motion.div
           className="w-full md:w-[40%] h-full bg-gradient-to-b from-[#0077B6] to-[#ADE8F4] flex flex-col items-center justify-center text-white p-6 rounded-r-3xl"
           initial={{ opacity: 0, x: -50 }}
@@ -128,26 +84,18 @@ const ResultPage = () => {
             animate={{ scale: 1 }}
             transition={{ duration: 0.5, type: "spring" }}
           >
-            <motion.span className="text-4xl font-bold">{score}</motion.span>
-            <motion.span className="text-lg">
-              of {examplan.length * 4}
-            </motion.span>
+            <motion.span className="text-4xl font-bold">{totalScore}</motion.span>
+            <motion.span className="text-lg">of {totalMax}</motion.span>
           </motion.div>
           <motion.h3 className="text-xl font-semibold mt-4">
-            {(score / (examplan.length * 4)) * 100 >= 70
-              ? "Excellent 🎉"
-              : "Keep Improving 💪"}
+            {(totalScore / totalMax) * 100 >= 70 ? "Excellent 🎉" : "Keep Improving 💪"}
           </motion.h3>
           <motion.p className="text-sm text-center px-6 mt-2">
-            Your percentage:{" "}
-            {examplan.length > 0
-              ? Math.round((score / (examplan.length * 4)) * 100)
-              : 0}
-            %
+            Your percentage: {Math.round((totalScore / totalMax) * 100)}%
           </motion.p>
         </motion.div>
 
-        {/* Right Section - Subject Summary and Actions */}
+        {/* Right Section - Subject Summary */}
         <motion.div
           className="w-full md:w-[60%] h-full p-6 flex flex-col justify-center"
           initial={{ opacity: 0, x: 50 }}
@@ -158,7 +106,6 @@ const ResultPage = () => {
             Summary
           </motion.h2>
 
-          {/* Render Subject Scores */}
           {subjects.map((subject, index) => (
             <motion.div
               key={index}
@@ -170,9 +117,7 @@ const ResultPage = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   {subject.icon}
-                  <span className="font-semibold text-gray-700">
-                    {subject.name}
-                  </span>
+                  <span className="font-semibold text-gray-700">{subject.name}</span>
                 </div>
                 <span className="font-bold">
                   {subject.score} / {subject.max}
@@ -181,7 +126,6 @@ const ResultPage = () => {
             </motion.div>
           ))}
 
-          {/* Action Buttons */}
           <motion.div
             className="flex flex-col gap-3 mt-6 items-center"
             initial={{ opacity: 0, y: 20 }}

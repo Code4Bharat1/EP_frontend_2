@@ -40,6 +40,7 @@ const TestInterface = () => {
           `${process.env.NEXT_PUBLIC_API_BASE_URL}/question/fetch-questions`
         );
         const data = response.data;
+        console.log(data);
         const subjectWiseQuestions = {
           Physics: [],
           Chemistry: [],
@@ -100,30 +101,48 @@ const TestInterface = () => {
   };
   
   const handleOptionClick = (index) => {
-    if (!questionsData[currentSubject] || !questionsData[currentSubject][currentQuestion]) {
-      return;
-    }
-    
-    setAnswers({ ...answers, [`${currentSubject}-${currentQuestion}`]: index });
-    setVisitedQuestions({
-      ...visitedQuestions,
-      [`${currentSubject}-${currentQuestion}`]: true,
-    });
-    
-    // Record that the question has been visited
-    localStorage.setItem(
-      "visitedQuestions",
-      JSON.stringify({
-        ...visitedQuestions,
-        [`${currentSubject}-${currentQuestion}`]: true,
-      })
-    );
-    
-    // Save answer to localStorage
-    const currentAnswers = JSON.parse(localStorage.getItem("testAnswers")) || {};
-    currentAnswers[`${currentSubject}-${currentQuestion}`] = index;
-    localStorage.setItem("testAnswers", JSON.stringify(currentAnswers));
-  };
+  if (!questionsData[currentSubject] || !questionsData[currentSubject][currentQuestion]) {
+    return;
+  }
+
+  // Get current question data
+  const currentQData = questionsData[currentSubject][currentQuestion];
+  const questionKey = `${currentSubject}-${currentQuestion}`;
+  
+  // Find correct answer index
+  const correctIndex = currentQData.options.findIndex(
+    opt => opt === currentQData.correctOption
+  );
+  
+  // Get previous answer if exists
+  const previousAnswer = answers[questionKey];
+  const currentAnswers = JSON.parse(localStorage.getItem("testAnswers")) || {};
+
+  // Remove previous correct count if existed
+  if (previousAnswer !== undefined && previousAnswer === correctIndex) {
+    const subjectKey = `${currentSubject.toLowerCase()}_correct`;
+    currentAnswers[subjectKey] = Math.max((currentAnswers[subjectKey] || 0) - 1, 0);
+  }
+
+  // Update with new answer
+  const newAnswers = { ...answers, [questionKey]: index };
+  setAnswers(newAnswers);
+  
+  // Update correct count if new answer is correct
+  if (index === correctIndex) {
+    const subjectKey = `${currentSubject.toLowerCase()}_correct`;
+    currentAnswers[subjectKey] = (currentAnswers[subjectKey] || 0) + 1;
+  }
+
+  // Save to localStorage
+  currentAnswers[questionKey] = index;
+  localStorage.setItem("testAnswers", JSON.stringify(currentAnswers));
+
+  // Update visited questions
+  const newVisited = { ...visitedQuestions, [questionKey]: true };
+  setVisitedQuestions(newVisited);
+  localStorage.setItem("visitedQuestions", JSON.stringify(newVisited));
+};
   
   const handleNavigation = (direction) => {
     const currentTime = new Date().getTime();
@@ -391,7 +410,7 @@ const TestInterface = () => {
           </div>
           
           {/* Question Box */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
+          <div className="bg-white rounded-lg shadow-lg p-6 select-none">
             <div className="mb-6 flex justify-between items-center">
               <span className="bg-blue-100 text-blue-800 px-4 py-1 rounded-full font-medium">
                 Question {currentQuestion + 1} of {totalQuestionsBySubject[currentSubject]}
