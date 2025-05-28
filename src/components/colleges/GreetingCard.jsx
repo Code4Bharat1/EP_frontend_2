@@ -13,7 +13,7 @@ const collegeData = [
 ];
 
 const GreetingCard = () => {
-  const [name] = useState("Basim Thakur!");
+  const [name] = useState("");
   const [greeting, setGreeting] = useState("");
   const [marks, setMarks] = useState("");
   const [rankText, setRankText] = useState("");
