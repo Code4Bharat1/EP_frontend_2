@@ -79,13 +79,14 @@ const SubjectStatisticsCard = ({ selectedFilter = "This Week" }) => {
         </div>
       </div>
     );
+  }
 
   const hasData = subjectData.length > 0;
 
   return (
     <div className="relative bg-white rounded-2xl p-6 shadow-xl border-white/20 backdrop-blur-sm hover:shadow-2xl transition-all duration-300 h-[450px]">
       {/* Gradient Overlay */}
-      <div className="absolute inset-0  rounded-2xl"></div>
+      <div className="absolute inset-0 rounded-2xl"></div>
       
       <div className="relative z-10">
         {/* Header */}
