@@ -5,6 +5,7 @@ import { TfiTimer } from "react-icons/tfi";
 import { FaFlask, FaAtom, FaDna, FaClock, FaCheck, FaTimes, FaBookmark, FaChevronDown, FaChevronUp } from "react-icons/fa";
 import toast from "react-hot-toast";
 import Loading from "../Loading/Loading";
+import { useRouter } from "next/navigation";
 
 const subjects = [
   { name: "Physics", icon: <FaAtom className="text-lg text-blue-500" />, questionCount: 45 },
@@ -13,6 +14,9 @@ const subjects = [
 ];
 
 const TestInterface = () => {
+
+  const router = useRouter();
+  
   const [questionsData, setQuestionsData] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -32,6 +36,35 @@ const TestInterface = () => {
   const totalQuestions = totalQuestionsBySubject.Physics + totalQuestionsBySubject.Chemistry + totalQuestionsBySubject.Biology;
   const [timer, setTimer] = useState(totalQuestions * 60); // 1 minute per question
   const [timeSpent, setTimeSpent] = useState({});
+
+
+  // Detect the user exits fullscreen
+  useEffect(() => {
+  const handleFullScreenChange = () => {
+    if (
+      !document.fullscreenElement &&
+      !document.webkitFullscreenElement &&
+      !document.mozFullScreenElement &&
+      !document.msFullscreenElement
+    ) {
+      // User exited fullscreen mode
+      router.push("/testselection");
+    }
+  };
+
+  document.addEventListener("fullscreenchange", handleFullScreenChange);
+  document.addEventListener("webkitfullscreenchange", handleFullScreenChange);
+  document.addEventListener("mozfullscreenchange", handleFullScreenChange);
+  document.addEventListener("MSFullscreenChange", handleFullScreenChange);
+
+  return () => {
+    document.removeEventListener("fullscreenchange", handleFullScreenChange);
+    document.removeEventListener("webkitfullscreenchange", handleFullScreenChange);
+    document.removeEventListener("mozfullscreenchange", handleFullScreenChange);
+    document.removeEventListener("MSFullscreenChange", handleFullScreenChange);
+  };
+}, []);
+
   
   useEffect(() => {
     const fetchQuestions = async () => {
@@ -447,7 +480,7 @@ const TestInterface = () => {
                               ? "bg-blue-500 text-white"
                               : "bg-gray-200"
                           }`}>
-                            {String.fromCharCode(65 + index)}
+                            <div className="border-4 border-gray-200 rounded-full"></div>
                           </div>
                           <span>{option}</span>
                         </div>

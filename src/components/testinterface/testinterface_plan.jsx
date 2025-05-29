@@ -13,6 +13,7 @@ import {
 } from "react-icons/fa";
 import toast from "react-hot-toast";
 import Loading from "../Loading/Loading";
+import { useRouter } from "next/navigation";
 
 const subjects = [
   { name: "Physics", icon: <FaAtom className="text-lg text-blue-500" /> },
@@ -21,6 +22,10 @@ const subjects = [
 ];
 
 const TestInterface = () => {
+
+  //initailizing router
+  const router = useRouter();
+
   const [questionsData, setQuestionsData] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -35,6 +40,29 @@ const TestInterface = () => {
   const [allocatedQuestions, setAllocatedQuestions] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [testEndTime, setTestEndTime] = useState(null);
+
+  //use effect to handle the full screen escape
+  useEffect (()=>{
+    const handleFullScreenChange = () =>{
+      if(!document.fullscreenElement && !document.webkitFullscreenElement && !document.mozFullscreenElement && !document.msFullscreenElement) {
+        //push the page if the full screen exits
+        router.push("/testselection");
+      }
+    }
+
+    document.addEventListener("FullscreenElement", handleFullScreenChange);
+    document.addEventListener("webkitFullscreenElement", handleFullScreenChange);
+    document.addEventListener("MSFullscreenChange", handleFullScreenChange);
+    document.addEventListener("mozFullscreenElement", handleFullScreenChange);
+    
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullScreenChange);
+      document.removeEventListener("webkitfullscreenchange", handleFullScreenChange);
+      document.removeEventListener("mozfullscreenchange", handleFullScreenChange);
+      document.removeEventListener("MSFullscreenChange", handleFullScreenChange);
+    }
+
+  },[])
 
   useEffect(() => {
     const fetchQuestions = async () => {
@@ -492,7 +520,7 @@ const TestInterface = () => {
                               ? "border-white bg-white/20"
                               : "border-gray-300 bg-gray-50"
                           }`}>
-                            {String.fromCharCode(65 + index)}
+                            <div className="border-4 border-gray-50 rounded-full"></div>
                           </span>
                           <span className="text-md">{option}</span>
                         </button>

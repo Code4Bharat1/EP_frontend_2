@@ -7,3 +7,24 @@
   }
 }
 
+@layer utilities {
+  /* Custom Transparent Scrollbar */
+  .transparent-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+    overflow: hidden;
+  }
+
+  .transparent-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .transparent-scrollbar::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 10px;
+  }
+
+  .transparent-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: transparent;
+  }
+}

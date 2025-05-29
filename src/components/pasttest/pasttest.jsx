@@ -350,7 +350,7 @@ const PastTest = () => {
                             Test ID
                           </label>
                           <span className="text-sm font-medium text-gray-900">
-                            {test.testId || "N/A"}
+                            {(index + 1) || "N/A"}
                           </span>
                         </div>
                         <div className="bg-gray-50 p-3 rounded-lg">

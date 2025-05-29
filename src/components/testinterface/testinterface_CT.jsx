@@ -42,6 +42,28 @@ const TestInterface = () => {
   
   const router = useRouter();
 
+  //useEffect to control the escape screen
+  useEffect (() => {
+    const handleFullScreenChange = () =>{
+      if(!document.fullscreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement && !document.mozFullscreenElement) {
+        //push the page 
+        router.push("/testselection")
+      }
+    }
+
+    document.addEventListener("fullscreenchange", handleFullScreenChange);
+  document.addEventListener("webkitfullscreenchange", handleFullScreenChange);
+  document.addEventListener("mozfullscreenchange", handleFullScreenChange);
+  document.addEventListener("MSFullscreenChange", handleFullScreenChange);
+
+  return () => {
+    document.removeEventListener("fullscreenchange", handleFullScreenChange);
+    document.removeEventListener("webkitfullscreenchange", handleFullScreenChange);
+    document.removeEventListener("mozfullscreenchange", handleFullScreenChange);
+    document.removeEventListener("MSFullscreenChange", handleFullScreenChange);
+  };
+  },[])
+
   // 1. INITIALIZATION EFFECT - Runs only once on mount
   useEffect(() => {
     if (typeof window === "undefined") return; // Safety check for SSR

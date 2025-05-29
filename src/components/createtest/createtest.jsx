@@ -16,6 +16,28 @@ const Createtest = () => {
 
   const steps = ["Subjects", "Chapters", "Preview"];
 
+  //useEffect to control the escape screen
+    useEffect (() => {
+      const handleFullScreenChange = () =>{
+        if(!document.fullscreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement && !document.mozFullscreenElement) {
+          //push the page 
+          router.push("/testselection")
+        }
+      }
+  
+      document.addEventListener("fullscreenchange", handleFullScreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullScreenChange);
+    document.addEventListener("mozfullscreenchange", handleFullScreenChange);
+    document.addEventListener("MSFullscreenChange", handleFullScreenChange);
+  
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullScreenChange);
+      document.removeEventListener("webkitfullscreenchange", handleFullScreenChange);
+      document.removeEventListener("mozfullscreenchange", handleFullScreenChange);
+      document.removeEventListener("MSFullscreenChange", handleFullScreenChange);
+    };
+    },[])
+  
   // Load selected subjects from local storage on mount
   useEffect(() => {
     const savedSubjects = JSON.parse(

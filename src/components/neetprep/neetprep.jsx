@@ -66,6 +66,18 @@ const NeetPrep = () => {
     visible: { opacity: 1, y: 0 },
   };
 
+  //Function to enter the full screen
+  const enterFullScreen = async() => {
+    const elem = document.documentElement;
+     if (elem.requestFullscreen) {
+      await elem.requestFullscreen();
+    } else if (elem.webkitRequestFullscreen) {
+      await elem.webkitRequestFullscreen(); // Safari
+    } else if (elem.msRequestFullscreen) {
+      await elem.msRequestFullscreen(); // IE11
+    }
+  }
+
   const handleStartTest = (subject, chapter) => {
     // Calculate the number of allocated questions for the chapter
     const allocatedQuestions = subjectUnits?.[subject]?.find(
@@ -93,6 +105,7 @@ const NeetPrep = () => {
           chapter
         )}&allocatedQuestions=${allocatedQuestions}&subject=${subject}`
       );
+      enterFullScreen();  
     } else {
       setError("No data found for the selected chapter.");
     }

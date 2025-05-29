@@ -20,9 +20,9 @@ const QuizInterface = () => {
   const { difficulty, numberOfQuestions } = quizSettings;
 
   const difficultySettings = {
-    easy: { timeLimit: 40, color: "emerald", image: "/easy-level-bot.png" },
-    medium: { timeLimit: 30, color: "amber", image: "/medium-level-bot.png" },
-    hard: { timeLimit: 20, color: "red", image: "/hard-level-bot.png" },
+    easy: { timeLimit: 50, color: "emerald", image: "/easy-level-bot.png" },
+    medium: { timeLimit: 40, color: "amber", image: "/medium-level-bot.png" },
+    hard: { timeLimit: 30, color: "red", image: "/hard-level-bot.png" },
   };
 
   const [questions, setQuestions] = useState([]);
@@ -41,6 +41,28 @@ const QuizInterface = () => {
 
   const currentQuestion = questions[currentQuestionIndex] || {};
   const currentAnswer = answers[currentQuestion.id];
+
+  //useEffect to control the escape screen
+    useEffect (() => {
+      const handleFullScreenChange = () =>{
+        if(!document.fullscreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement && !document.mozFullscreenElement) {
+          //push the page 
+          router.push("/testselection")
+        }
+      }
+  
+      document.addEventListener("fullscreenchange", handleFullScreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullScreenChange);
+    document.addEventListener("mozfullscreenchange", handleFullScreenChange);
+    document.addEventListener("MSFullscreenChange", handleFullScreenChange);
+  
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullScreenChange);
+      document.removeEventListener("webkitfullscreenchange", handleFullScreenChange);
+      document.removeEventListener("mozfullscreenchange", handleFullScreenChange);
+      document.removeEventListener("MSFullscreenChange", handleFullScreenChange);
+    };
+    },[])
 
   useEffect(() => {
     fetchQuestions();

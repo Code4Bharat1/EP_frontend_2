@@ -1,16 +1,69 @@
+"use client"
+
 import { useEffect, useState, useMemo } from "react";
 import { Bell, Search, MapPin, Users, Award } from "lucide-react";
+import collegeData from "../../../public/collegeData.js";
 
-// Mock college data - replace with your actual data
-const collegeData = [
-  { name: "AIIMS Delhi", state: "Delhi", type: "Government", intake: 125, rankCutoff: 150 },
-  { name: "AIIMS Mumbai", state: "Maharashtra", type: "Government", intake: 100, rankCutoff: 200 },
-  { name: "JIPMER Puducherry", state: "Puducherry", type: "Government", intake: 200, rankCutoff: 500 },
-  { name: "KGMU Lucknow", state: "Uttar Pradesh", type: "Government", intake: 250, rankCutoff: 1000 },
-  { name: "Grant Medical College", state: "Maharashtra", type: "Government", intake: 180, rankCutoff: 2500 },
-  { name: "Manipal Academy", state: "Karnataka", type: "Private", intake: 300, rankCutoff: 15000 },
-  { name: "St. John's Medical College", state: "Karnataka", type: "Private", intake: 150, rankCutoff: 8000 },
-];
+// Sample college data (you'll replace this with your actual collegeData import)
+// const collegeData = [
+//   {
+//     name: 'Armed Forces Medical College, Pune',
+//     state: 'Maharashtra',
+//     rankCutoff: [600, 1000],
+//     intake: 150,
+//     type: 'Government'
+//   },
+//   {
+//     name: 'B. J. Government Medical College, Pune',
+//     state: 'Maharashtra',
+//     rankCutoff: [937, 2379],
+//     intake: 250,
+//     type: 'Government'
+//   },
+//   {
+//     name: 'Dr. Shankarrao Chavan Government Medical College, Nanded',
+//     state: 'Maharashtra',
+//     rankCutoff: [8943, 11255],
+//     intake: 150,
+//     type: 'Government'
+//   },
+//   {
+//     name: 'Dr. Vaishampayan Memorial Medical College, Solapur',
+//     state: 'Maharashtra',
+//     rankCutoff: [9477, 15732],
+//     intake: 200,
+//     type: 'Government'
+//   },
+//   {
+//     name: 'Government Medical College, Akola',
+//     state: 'Maharashtra',
+//     rankCutoff: [12051, 18630],
+//     intake: 200,
+//     type: 'Government'
+//   },
+//   {
+//     name: 'Government Medical College, Alibag',
+//     state: 'Maharashtra',
+//     rankCutoff: [20000, 22000],
+//     intake: 100,
+//     type: 'Government'
+//   },
+//   // Add more sample colleges for testing
+//   {
+//     name: 'All India Institute of Medical Sciences, Delhi',
+//     state: 'Delhi',
+//     rankCutoff: [1, 100],
+//     intake: 100,
+//     type: 'Government'
+//   },
+//   {
+//     name: 'Christian Medical College, Vellore',
+//     state: 'Tamil Nadu',
+//     rankCutoff: [50, 500],
+//     intake: 100,
+//     type: 'Private'
+//   }
+// ];
 
 const GreetingCard = () => {
   const [name] = useState("");
@@ -48,9 +101,10 @@ const GreetingCard = () => {
     let text = "";
     let value = 0;
 
+    // More realistic rank prediction based on NEET patterns
     if (marksNum >= 700) {
       text = "Rank: 1 - 100";
-      value = 50; // Use average for better prediction
+      value = 50;
     } else if (marksNum >= 680) {
       text = "Rank: 100 - 500";
       value = 300;
@@ -61,17 +115,23 @@ const GreetingCard = () => {
       text = "Rank: 2,000 - 7,000";
       value = 4500;
     } else if (marksNum >= 600) {
-      text = "Rank: 7,000 - 10,000";
-      value = 8500;
+      text = "Rank: 7,000 - 12,000";
+      value = 9500;
+    } else if (marksNum >= 580) {
+      text = "Rank: 12,000 - 20,000";
+      value = 16000;
     } else if (marksNum >= 550) {
-      text = "Rank: 10,000 - 30,000";
-      value = 20000;
+      text = "Rank: 20,000 - 35,000";
+      value = 27500;
     } else if (marksNum >= 500) {
-      text = "Rank: 30,000 - 50,000";
-      value = 40000;
+      text = "Rank: 35,000 - 60,000";
+      value = 47500;
+    } else if (marksNum >= 450) {
+      text = "Rank: 60,000 - 100,000";
+      value = 80000;
     } else {
-      text = "Rank: 50,000+";
-      value = 60000;
+      text = "Rank: 100,000+";
+      value = 120000;
     }
 
     return { rankText: text, rankValue: value, error: "" };
@@ -100,12 +160,19 @@ const GreetingCard = () => {
     setRankText(rankText);
     setPredictedRank(rankValue);
 
+    // Fixed filtering logic: Check if predicted rank is within the college's cutoff range
     const filtered = collegeData.filter((college) => {
       const stateMatch = selectedState === "All" || college.state === selectedState;
-      return stateMatch && rankValue <= college.rankCutoff;
+      
+      // Correct logic: check if your rank is good enough for the college
+      // Lower rank number is better, so your rank should be <= college's closing rank
+      const rankMatch = rankValue <= college.rankCutoff[1] && rankValue >= college.rankCutoff[0];
+      
+      return stateMatch && rankMatch;
     });
 
-    setEligibleColleges(filtered.sort((a, b) => a.rankCutoff - b.rankCutoff));
+    // Sort by closing rank (ascending) - colleges with better cutoffs first
+    setEligibleColleges(filtered.sort((a, b) => a.rankCutoff[1] - b.rankCutoff[1]));
     setIsLoading(false);
   };
 
@@ -244,7 +311,7 @@ const GreetingCard = () => {
               </h3>
               <p className="text-2xl font-bold text-green-700">{rankText}</p>
               <p className="text-sm text-gray-600 mt-1">
-                Based on marks: {marks}/720
+                Based on marks: {marks}/720 (Predicted rank: ~{predictedRank})
               </p>
             </div>
 
@@ -280,7 +347,7 @@ const GreetingCard = () => {
                           {college.intake} seats
                         </span>
                         <span className="text-green-600 font-medium">
-                          Cutoff: {college.rankCutoff}
+                          Cutoff: {college.rankCutoff[0]} - {college.rankCutoff[1]}
                         </span>
                       </div>
                     </div>
@@ -293,7 +360,7 @@ const GreetingCard = () => {
                   No Eligible Colleges Found
                 </h3>
                 <p className="text-yellow-700">
-                  No colleges found for your predicted rank in {selectedState === 'All' ? 'any state' : selectedState}.
+                  No colleges found for your predicted rank (~{predictedRank}) in {selectedState === 'All' ? 'any state' : selectedState}.
                   Try selecting "All" states or consider improving your preparation.
                 </p>
               </div>

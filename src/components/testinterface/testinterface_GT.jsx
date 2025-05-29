@@ -9,6 +9,7 @@ import { HiOutlineSparkles } from "react-icons/hi";
 import { RiQuestionnaireFill } from "react-icons/ri";
 import toast from "react-hot-toast";
 import Loading from "../Loading/Loading";
+import { useRouter } from "next/navigation";
 
 const subjectIcons = {
   Physics: { icon: FaAtom, color: "text-blue-600", bgColor: "bg-blue-500", bgLight: "bg-blue-50", borderColor: "border-blue-300", gradientFrom: "from-blue-400", gradientTo: "to-blue-600" },
@@ -17,6 +18,9 @@ const subjectIcons = {
 };
 
 const TestInterface = () => {
+
+  const router = useRouter();
+
   const [selectedSubjects, setSelectedSubjects] = useState([]);
   const [questionsData, setQuestionsData] = useState({});
   const [loading, setLoading] = useState(true);
@@ -74,6 +78,28 @@ const TestInterface = () => {
 
     fetchQuestions();
   }, []);
+
+  //useEffect to control the escape screen
+    useEffect (() => {
+      const handleFullScreenChange = () =>{
+        if(!document.fullscreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement && !document.mozFullscreenElement) {
+          //push the page 
+          router.push("/testselection")
+        }
+      }
+  
+      document.addEventListener("fullscreenchange", handleFullScreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullScreenChange);
+    document.addEventListener("mozfullscreenchange", handleFullScreenChange);
+    document.addEventListener("MSFullscreenChange", handleFullScreenChange);
+  
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullScreenChange);
+      document.removeEventListener("webkitfullscreenchange", handleFullScreenChange);
+      document.removeEventListener("mozfullscreenchange", handleFullScreenChange);
+      document.removeEventListener("MSFullscreenChange", handleFullScreenChange);
+    };
+    },[])
 
   useEffect(() => {
     const countdown = setInterval(() => {
