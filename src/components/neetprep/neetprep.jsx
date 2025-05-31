@@ -177,39 +177,49 @@ const NeetPrep = () => {
               </h2>
               <div className="space-y-4">
               {/* // Inside your map function where you render each unit */}
-              {(subjectUnits?.[subject] || []).map((unit, index) => {
-  // Calculate progress based on weightage (assuming max weightage is 5)
-  const maxWeightage = 5;
-  const weightage = unit.weightage || 0; // Use 0 if weightage is not available
-  const progressPercentage = Math.min((weightage / maxWeightage) * 100, 100); // Cap at 100%
+             {(() => {
+  const units = subjectUnits?.[subject] || [];
 
-  return (
-    <div
-      key={index}
-      className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b pb-3"
-    >
-      <div className="text-sm text-gray-800">
-      <strong>{unit.chapter}</strong> — {unit.allocated_time.split('.')[0]} days, {unit.expected_questions} questions
-      </div>
-      <div className="flex items-center gap-4">
-        {/* Progress Display */}
-        <span className="text-sm text-gray-600">{`${Math.round(progressPercentage)}%`}</span>
-        <div className="w-24 h-2 bg-gray-200 rounded-full">
-          <div
-            className="h-2 bg-blue-500 rounded-full"
-            style={{ width: `${progressPercentage}%` }}
-          ></div>
-        </div>
-        <button
-          className="px-4 py-1.5 text-sm whitespace-nowrap rounded-md bg-[#49A6CF] text-white hover:bg-[#3c91b3] transition"
-          onClick={() => handleStartTest(subject, unit.chapter)}
-        >
-          Start Test
-        </button>
-      </div>
-    </div>
+  // Step 1: Calculate total weightage for this subject
+  const totalWeightage = units.reduce(
+    (total, unit) => total + (unit.weightage || 0),
+    0
   );
-})}
+
+  return units.map((unit, index) => {
+    // Step 2: Calculate percentage per chapter based on total
+    const progressPercentage = totalWeightage
+      ? ((unit.weightage || 0) / totalWeightage) * 100
+      : 0;
+
+    return (
+      <div
+        key={index}
+        className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b pb-3"
+      >
+        <div className="text-sm text-gray-800">
+          <strong>{unit.chapter}</strong> — {unit.allocated_time.split('.')[0]} days, {unit.expected_questions} questions
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="text-sm text-gray-600">{`${Math.round(progressPercentage)}%`}</span>
+          <div className="w-24 h-2 bg-gray-200 rounded-full">
+            <div
+              className="h-2 bg-blue-500 rounded-full"
+              style={{ width: `${progressPercentage}%` }}
+            ></div>
+          </div>
+          <button
+            className="px-4 py-1.5 text-sm whitespace-nowrap rounded-md bg-[#49A6CF] text-white hover:bg-[#3c91b3] transition"
+            onClick={() => handleStartTest(subject, unit.chapter)}
+          >
+            Start Test
+          </button>
+        </div>
+      </div>
+    );
+  });
+})()}
+
               </div>
             </motion.div>
           ))
