@@ -1,195 +1,215 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { FaFlask, FaAtom, FaDna, FaCalculator } from "react-icons/fa"; // Icons
-import { IoIosArrowBack, IoIosArrowForward } from "react-icons/io"; // Arrows
-import Image from "next/image"; // Import Next.js Image component
-import Link from "next/link";
+import { FaFlask, FaAtom, FaDna, FaClock, FaCheck, FaFlag } from "react-icons/fa";
 import toast from "react-hot-toast";
+import Loading from "../Loading/Loading";
 
-// Subject data
 const subjects = [
-  { name: "Maths", icon: <FaCalculator className="text-lg text-blue-500" /> },
   { name: "Physics", icon: <FaAtom className="text-lg text-blue-500" /> },
-  { name: "Chemistry", icon:<FaFlask className="text-lg text-green-500" /> }, 
+  { name: "Chemistry", icon: <FaFlask className="text-lg text-green-500" /> },
   { name: "Biology", icon: <FaDna className="text-lg text-red-500" /> },
 ];
 
 const TestInterfaceMobile = () => {
-  const [currentSubject, setCurrentSubject] = useState("");
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [answers, setAnswers] = useState({});
-  const [markedForReview, setMarkedForReview] = useState({});
-  const [visitedQuestions, setVisitedQuestions] = useState({});
-  const [timer, setTimer] = useState(10800); // 3 hours countdown
   const [questionsData, setQuestionsData] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedSubject, setSelectedSubject] = useState(""); 
+  const [currentSubject, setCurrentSubject] = useState("Physics");
+  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [visitedQuestions, setVisitedQuestions] = useState({});
+  const [markedForReview, setMarkedForReview] = useState({});
+  const [timer, setTimer] = useState(0);
+  const [allocatedQuestions, setAllocatedQuestions] = useState(0);
+  const [testEndTime, setTestEndTime] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  
-  // Fetch questions from API
+  // Load test setup info and questions
   useEffect(() => {
-    const subjectFromStorage = localStorage.getItem("selectedSubject");
-    setCurrentSubject(subjectFromStorage);
-    setSelectedSubject(subjectFromStorage); // Default to "Maths" if no subject is selected
+    // Read startTest data from localStorage for per-student info
+    const startTestData = JSON.parse(localStorage.getItem("startTest"));
+    if (startTestData) {
+      setCurrentSubject(startTestData.subject);
+      const allocated = startTestData.allocatedQuestions || 0;
+      setAllocatedQuestions(allocated);
+
+      // 1 minute per question
+      const timeInSeconds = allocated * 60;
+      setTimer(timeInSeconds);
+
+      // End time calculation
+      const endTime = new Date();
+      endTime.setSeconds(endTime.getSeconds() + timeInSeconds);
+      setTestEndTime(endTime);
+
+      // Mark first question as visited
+      setVisitedQuestions({ [`${startTestData.subject}-0`]: true });
+    }
+
+    // Fetch questions
+    const fetchQuestions = async () => {
+      try {
+        const response = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_BASE_URL}/question/fetch-questions`
+        );
+        const data = response.data;
+        const subjectWiseQuestions = { Physics: [], Chemistry: [], Biology: [] };
+        data.questions.forEach((item) => {
+          const subject = item.question.subject;
+          subjectWiseQuestions[subject]?.push({
+            id: item.question.id,
+            question: item.question.question_text,
+            options: item.options.map((opt) => opt.option_text),
+            correctOption: item.options.find((opt) => opt.is_correct)?.option_text,
+          });
+        });
+        setQuestionsData(subjectWiseQuestions);
+        setLoading(false);
+      } catch (err) {
+        setError("Failed to load questions");
+        setLoading(false);
+      }
+    };
+    fetchQuestions();
   }, []);
 
-  // Fetch questions based on the selected subject
+  // Timer logic (ends test at timeout)
   useEffect(() => {
-    if (selectedSubject) {
-      const fetchQuestions = async () => {
-        try {
-          const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_API_BASE_URL}/question/fetch-questions`
-          );
-          const data = response.data;
-          const subjectWiseQuestions = {
-            Physics: [],
-            Chemistry: [],
-            Biology: [],
-            Maths: [],
-          };
-
-          // Filter questions based on the selected subject
-          data.questions.forEach((item) => {
-            const subject = item.question.subject;
-            if (subject === selectedSubject) {
-              subjectWiseQuestions[subject]?.push({
-                id: item.question.id,
-                question: item.question.question_text,
-                options: item.options.map((opt) => opt.option_text),
-                correctOption: item.options.find((opt) => opt.is_correct)?.option_text,
-              });
-            }
-          });
-
-          setQuestionsData(subjectWiseQuestions);
-          setLoading(false);
-        } catch (err) {
-          console.error("Error fetching questions:", err);
-          setError("Failed to load questions");
-          setLoading(false);
-        }
-      };
-
-      fetchQuestions();
-    }
-  }, [selectedSubject]);
-
-  // Countdown timer
-  useEffect(() => {
+    if (!testEndTime) return;
     const countdown = setInterval(() => {
-      setTimer((prev) => (prev > 0 ? prev - 1 : 0));
+      const now = new Date();
+      const diff = Math.floor((testEndTime - now) / 1000);
+      if (diff <= 0) {
+        clearInterval(countdown);
+        setTimer(0);
+        handleSubmit();
+      } else {
+        setTimer(diff);
+      }
     }, 1000);
     return () => clearInterval(countdown);
-  }, []);
+  }, [testEndTime]);
 
-  // Format time for display
+  // Timer formatting
   const formattedTime = {
     hours: Math.floor(timer / 3600),
     minutes: Math.floor((timer % 3600) / 60),
     seconds: timer % 60,
   };
 
-  // Handle answer selection
+  // Option click handler
   const handleOptionClick = (index) => {
+    const questionData = questionsData[currentSubject][currentQuestion];
+    const selectedAnswer = questionData.options[index];
+    const correctAnswer = questionData.correctOption;
+
+    // Find the chapter name if present in localStorage
+    const questionId = questionData.id;
+    const questionInfo = JSON.parse(localStorage.getItem("questionInfo")) || [];
+    const chapterInfo = questionInfo.find(item => item.questionIds === questionId);
+    const chapterName = chapterInfo ? chapterInfo.chapterName : "Unknown Chapter";
+
+    // Save answer data
+    const isCorrect = selectedAnswer === correctAnswer;
+    const answerData = {
+      subject: currentSubject,
+      question: questionData.question,
+      question_id: questionData.id,
+      chapterName,
+      selectedAnswer,
+      isCorrect,
+      correctAnswer,
+    };
+
+    // Update examplan in localStorage
+    let savedAnswers = JSON.parse(localStorage.getItem("examplan")) || [];
+    const questionIndex = savedAnswers.findIndex(ans => ans.question_id === questionData.id);
+    if (questionIndex >= 0) savedAnswers[questionIndex] = answerData;
+    else savedAnswers.push(answerData);
+    localStorage.setItem("examplan", JSON.stringify(savedAnswers));
+
+    // Update UI states
     setAnswers({ ...answers, [`${currentSubject}-${currentQuestion}`]: index });
-    setVisitedQuestions({
-      ...visitedQuestions,
-      [`${currentSubject}-${currentQuestion}`]: true,
-    });
-
-    if (markedForReview[`${currentSubject}-${currentQuestion}`]) {
-      setMarkedForReview({ ...markedForReview, [`${currentSubject}-${currentQuestion}`]: false });
-    }
-  };
-
-  // Handle navigation between questions
-  const handleNavigation = (direction) => {
-    if (direction === "next" && currentQuestion < questionsData[currentSubject].length - 1) {
-      setCurrentQuestion(currentQuestion + 1);
-    } else if (direction === "prev" && currentQuestion > 0) {
-      setCurrentQuestion(currentQuestion - 1);
-    }
     setVisitedQuestions({ ...visitedQuestions, [`${currentSubject}-${currentQuestion}`]: true });
   };
 
-  // Mark question for review
-  const handleReviewLater = () => {
-    setMarkedForReview({ ...markedForReview, [`${currentSubject}-${currentQuestion}`]: true });
-    handleNavigation("next");
+  // Navigation
+  const handleNavigation = (direction) => {
+    if (direction === "next") {
+      if (currentQuestion >= allocatedQuestions - 1) {
+        setCurrentQuestion(0);
+      } else {
+        const nextQuestionIndex = currentQuestion + 1;
+        setCurrentQuestion(nextQuestionIndex);
+        setVisitedQuestions({
+          ...visitedQuestions,
+          [`${currentSubject}-${nextQuestionIndex}`]: true,
+        });
+      }
+    } else if (direction === "prev" && currentQuestion > 0) {
+      setCurrentQuestion(currentQuestion - 1);
+    }
   };
 
-  // Clear answer for current question
+  // Mark for review
+  const handleReviewLater = () => {
+    setMarkedForReview({
+      ...markedForReview,
+      [`${currentSubject}-${currentQuestion}`]: !markedForReview[`${currentSubject}-${currentQuestion}`],
+    });
+  };
+
+  // Clear response
   const handleClearResponse = () => {
     const updatedAnswers = { ...answers };
     delete updatedAnswers[`${currentSubject}-${currentQuestion}`];
     setAnswers(updatedAnswers);
+
+    // Remove from localStorage
+    const savedAnswers = JSON.parse(localStorage.getItem("examplan")) || [];
+    const currentQuestionData = questionsData[currentSubject][currentQuestion];
+    const updatedSavedAnswers = savedAnswers.filter(
+      answer => answer.question_id !== currentQuestionData.id
+    );
+    localStorage.setItem("examplan", JSON.stringify(updatedSavedAnswers));
   };
 
-  // Get question status (answered, unanswered, review, etc.)
-  const getQuestionStatus = (questionIndex) => {
-    const key = `${currentSubject}-${questionIndex}`;
-    if (answers[key] !== undefined) return "answered"; // Answered
-    if (markedForReview[key]) return "review"; // Marked for Review
-    if (visitedQuestions[key]) return "unanswered"; // Visited but unanswered
-    return "not-visited"; // Not visited
-  };
-
-  // Submit the test
+  // Submit
   const handleSubmit = async () => {
-    const confirmSubmit = window.confirm("Confirm submit?");
+    if (isSubmitting) return;
+    const confirmSubmit = window.confirm("Are you sure you want to submit this test?");
     if (!confirmSubmit) return;
+    setIsSubmitting(true);
 
     const authToken = localStorage.getItem("authToken");
     if (!authToken) {
-      toast.error("Authentication failed! Please log in again.",{
-        duration: 5000
-      });
+      toast.error("Authentication failed! Please log in again.", { duration: 5000 });
+      setIsSubmitting(false);
       return;
     }
-
     const endTime = new Date().toISOString();
     const startTime = localStorage.getItem("testStartTime") || new Date().toISOString();
     let correctAnswers = [];
     let wrongAnswers = [];
     let notAttempted = [];
     let totalMarks = 0;
+    const savedAnswers = JSON.parse(localStorage.getItem("examplan")) || [];
 
-    // Process all answers to categorize them properly
-    Object.keys(questionsData).forEach((subject) => {
-      questionsData[subject].forEach((question, index) => {
-        const selectedOptionIndex = answers[`${subject}-${index}`];
-        const selectedOption = question.options[selectedOptionIndex] || null;
-        const correctOption = question.options.find((opt) => opt === question.correctOption);
-        const marks =
-          selectedOption === correctOption
-            ? 4
-            : selectedOption === null
-            ? 0
-            : -1;
-
-        const questionData = [
-          question.id,
-          subject,
-          question.chapter,
-          selectedOption,
-          correctOption,
-          marks,
-          0, // Time spent can be calculated if tracked
-        ];
-
-        if (selectedOption === null) {
-          notAttempted.push([question.id, subject, question.chapter]);
-        } else if (selectedOption === correctOption) {
-          correctAnswers.push(questionData);
-        } else {
-          wrongAnswers.push(questionData);
-        }
-
-        totalMarks += marks;
-      });
+    savedAnswers.forEach((answer) => {
+      const { question_id, selectedAnswer, correctAnswer, isCorrect, subject, chapterName } = answer;
+      const marks = isCorrect ? 4 : selectedAnswer === null ? 0 : -1;
+      const questionData = [
+        question_id, subject, chapterName, selectedAnswer, correctAnswer, marks, 0
+      ];
+      if (selectedAnswer === null) {
+        notAttempted.push([question_id, subject, chapterName]);
+      } else if (isCorrect) {
+        correctAnswers.push(questionData);
+      } else {
+        wrongAnswers.push(questionData);
+      }
+      totalMarks += marks;
     });
 
     const testResults = {
@@ -212,164 +232,203 @@ const TestInterfaceMobile = () => {
           },
         }
       );
-
       if (response.status === 201) {
-        toast.success("Test submitted successfully!",{
-          duration: 5000
-        });
-        localStorage.removeItem("selectedSubject");
+        toast.success("Test submitted successfully!", { duration: 5000 });
         window.location.href = "/result";
       } else {
-        toast.error("Failed to submit test.",{
-          duration: 5000
-        });
+        toast.error("Failed to submit test.", { duration: 5000 });
       }
     } catch (error) {
-      console.error("Error submitting test:", error);
-      toast.error(`Error: ${error.response?.data?.error || "Something went wrong"}`,{
-        duration: 5000
-      });
+      toast.error(
+        "Error submitting test: " + (error.response?.data?.message || error.message),
+        { duration: 5000 }
+      );
+      setIsSubmitting(false);
     }
   };
 
-  // Show loading screen if questions are still being fetched
-  if (loading) return <p className="text-center text-xl">Loading questions...</p>;
-  if (error) return <p className="text-center text-red-500">{error}</p>;
+  // Status helper
+  const getQuestionStatus = (questionIndex) => {
+    const key = `${currentSubject}-${questionIndex}`;
+    if (markedForReview[key]) return "review";
+    if (answers[key] !== undefined) return "answered";
+    if (visitedQuestions[key]) return "unanswered";
+    return "not-visited";
+  };
+
+  // Progress
+  const answeredCount = Object.keys(answers).length;
+  const markedCount = Object.keys(markedForReview).filter(key => markedForReview[key]).length;
+  const notVisitedCount = allocatedQuestions - Object.keys(visitedQuestions).length;
+
+  // UI
+  if (loading)
+    return (
+      <div className="h-screen flex justify-center items-center bg-gray-50">
+        <Loading />
+      </div>
+    );
+  if (error)
+    return (
+      <div className="h-screen flex items-center justify-center text-red-500">{error}</div>
+    );
+
+  const isLowTime = timer < 300;
 
   return (
-    <div className="h-screen w-full bg-gray-100 flex flex-col px-4 py-4">
-      <div className="text-center py-4">
-        <button className="bg-[#49A6CF] text-white font-bold py-2 px-6 rounded-md text-lg cursor-default">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-green-50 flex flex-col">
+      {/* Header */}
+      <div className="flex justify-between items-center px-4 py-3 bg-white shadow sticky top-0 z-20">
+        <span className="text-lg font-bold bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-1 rounded">
           Mock Test
+        </span>
+        <button
+          className="bg-gradient-to-r from-red-500 to-red-600 text-white px-5 py-2 rounded-md shadow font-semibold flex items-center"
+          onClick={handleSubmit}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? (
+            <>
+              <span className="mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+              Submitting...
+            </>
+          ) : (
+            <>Submit</>
+          )}
         </button>
       </div>
 
-      {/* Subject Tabs */}
-      <div className="flex justify-center items-center">
-        {subjects.map((subject) => (
-          currentSubject === subject.name && (
-            <button
-              key={subject.name}
-              className={`px-6 py-2 flex items-center gap-2 rounded-md border ${
-                currentSubject === subject.name
-                  ? "border-blue-500 text-blue-600 font-bold"
-                  : "border-gray-300"
-              }`}
-              onClick={() => setCurrentSubject(subject.name)}
-            >
-              {subject.icon} {subject.name}
-            </button>
-          )
-        ))}
+      {/* Timer and Progress */}
+      <div className={`flex items-center justify-between my-2 px-4 py-2 rounded-lg shadow ${
+        isLowTime ? "bg-red-100 animate-pulse" : "bg-white"
+      }`}>
+        <div className="flex items-center gap-2">
+          <FaClock className={`text-xl ${isLowTime ? "text-red-600" : "text-blue-600"}`} />
+          <span className={`font-mono font-semibold text-lg ${isLowTime ? "text-red-600" : "text-blue-700"}`}>
+            {String(formattedTime.hours).padStart(2, "0")}:
+            {String(formattedTime.minutes).padStart(2, "0")}:
+            {String(formattedTime.seconds).padStart(2, "0")}
+          </span>
+        </div>
+        <span className="text-xs text-gray-700 font-semibold">
+          {answeredCount}/{allocatedQuestions} Answered
+        </span>
       </div>
 
-      {/* Time Left Section */}
-      <hr className="border-t border-gray-300 my-4 w-full" />
-      <div className="text-center mt-1 flex justify-center items-center gap-4">
-        <h3 className="font-bold text-sm">Time Left</h3>
-        <div className="mt-0 flex gap-4 text-lg">
-          <div className="bg-black text-white px-2 py-2 rounded-lg">{formattedTime.hours} HRS</div>
-          <div className="bg-black text-white px-2 py-2 rounded-lg">{formattedTime.minutes} MIN</div>
-          <div className="bg-black text-white px-2 py-2 rounded-lg">{formattedTime.seconds} SEC</div>
-        </div>
-      </div>
-      <hr className="border-t border-gray-300 my-2" />
-
-      {/* Status Indicators */}
-      <div className="grid grid-cols-2 gap-2 text-center mt-2">
-        <div className="flex items-center gap-2">
-          <div className="bg-[#16DBCC] w-6 h-6 rounded"></div>
-          <span>Answered</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="bg-[#FE5C73] w-6 h-6 rounded"></div>
-          <span>Unanswered</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="bg-[#F1C40F] w-6 h-6 rounded"></div>
-          <span>Not Visited</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="bg-[#007AFF] w-6 h-6 rounded"></div>
-          <span>Review</span>
-        </div>
-      </div>
-
-      {/* Question Number Navigation */}
-      <div className="flex justify-between items-center mt-4">
-        <IoIosArrowBack className="text-2xl cursor-pointer" onClick={() => handleNavigation("prev")} />
-        {[...Array(10)].map((_, index) => {
+      {/* Question Navigation Grid */}
+      <div className="flex flex-wrap gap-2 justify-center p-2">
+        {Array.from({ length: allocatedQuestions }).map((_, index) => {
           const status = getQuestionStatus(index);
-          const bgColor = {
-            answered: "bg-[#16DBCC]",
-            unanswered: "bg-[#FE5C73]",
-            "not-visited": "bg-[#F1C40F]",
-            review: "bg-[#007AFF]",
-          }[status];
+          const bgMap = {
+            answered: "bg-gradient-to-br from-green-500 to-emerald-500",
+            review: "bg-gradient-to-br from-purple-500 to-pink-500",
+            unanswered: "bg-gradient-to-br from-red-500 to-orange-500",
+            "not-visited": "bg-gray-400",
+          };
           return (
             <button
               key={index}
-              className={`w-8 h-8 border rounded-md text-center text-white ${bgColor}`}
-              onClick={() => setCurrentQuestion(index)}
+              className={`w-9 h-9 rounded-md text-xs text-white font-bold shadow ${bgMap[status]} ${
+                currentQuestion === index ? "ring-2 ring-blue-300 scale-110" : ""
+              }`}
+              onClick={() => {
+                setCurrentQuestion(index);
+                setVisitedQuestions({
+                  ...visitedQuestions,
+                  [`${currentSubject}-${index}`]: true,
+                });
+              }}
             >
               {index + 1}
             </button>
           );
         })}
-        <IoIosArrowForward className="text-2xl cursor-pointer" onClick={() => handleNavigation("next")} />
       </div>
 
-      {/* Question and Options Section */}
-      <div className="mt-4 bg-white p-4 rounded-lg shadow-md">
-        <h3 className="text-lg font-semibold">Q{currentQuestion + 1}. {questionsData[currentSubject]?.[currentQuestion]?.question || "No Question Available"}</h3>
-        <div className="my-4">
-          <Image
-            src="/question.png"
-            alt="Question Image"
-            width={300}
-            height={200}
-            className="rounded-lg"
-          />
+      {/* Legend */}
+      <div className="flex justify-around text-xs my-2">
+        <div className="flex items-center gap-1"><span className="w-3 h-3 bg-green-500 rounded-full inline-block"></span>Answered</div>
+        <div className="flex items-center gap-1"><span className="w-3 h-3 bg-purple-500 rounded-full inline-block"></span>Review</div>
+        <div className="flex items-center gap-1"><span className="w-3 h-3 bg-red-500 rounded-full inline-block"></span>Unanswered</div>
+        <div className="flex items-center gap-1"><span className="w-3 h-3 bg-gray-400 rounded-full inline-block"></span>Not Visited</div>
+      </div>
+
+      {/* Main Question Display */}
+      <div className="bg-white rounded-2xl shadow-lg mx-2 my-2 p-4 flex flex-col flex-grow">
+        <div className="mb-2 flex justify-between items-center">
+          <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-medium">
+            Question {currentQuestion + 1} of {allocatedQuestions}
+          </span>
+          <span className="flex items-center gap-1 text-xs text-gray-600 font-semibold">
+            {subjects.find(s => s.name === currentSubject)?.icon}
+            {currentSubject}
+          </span>
         </div>
-
-        {/* Options with Highlight */}
-        {questionsData[currentSubject]?.[currentQuestion]?.options.map((option, index) => (
+        <div className="font-semibold mb-3 min-h-[40px]">
+          {questionsData[currentSubject]?.[currentQuestion]?.question ||
+            "No question available for this subject yet"}
+        </div>
+        <div className="flex flex-col gap-2">
+          {questionsData[currentSubject]?.[currentQuestion]?.options.map((option, idx) => {
+            const selected = answers[`${currentSubject}-${currentQuestion}`] === idx;
+            return (
+              <button
+                key={idx}
+                className={`w-full text-left px-4 py-3 rounded-xl border-2 flex items-center gap-3 transition ${
+                  selected
+                    ? "border-blue-500 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-900 font-semibold shadow"
+                    : "border-gray-200 bg-white hover:border-blue-400 hover:bg-blue-50"
+                }`}
+                onClick={() => handleOptionClick(idx)}
+              >
+                <span
+                  className={`w-6 h-6 flex items-center justify-center rounded-full border-2 ${
+                    selected ? "border-blue-500 bg-blue-500 text-white" : "border-gray-300 bg-white"
+                  }`}
+                >
+                  {selected ? <FaCheck /> : String.fromCharCode(65 + idx)}
+                </span>
+                {option}
+              </button>
+            );
+          })}
+        </div>
+        {/* Action buttons */}
+        <div className="grid grid-cols-2 gap-2 mt-6">
           <button
-            key={index}
-            className={`block w-full text-left px-4 py-2 border rounded-md mt-2 ${
-              answers[`${currentSubject}-${currentQuestion}`] === index
-                ? "bg-[#49A6CF] text-white border-blue-500"
-                : "border-gray-300"
-            }`}
-            onClick={() => handleOptionClick(index)}
+            className="bg-yellow-500 text-white py-2 px-2 rounded-md text-xs font-semibold shadow hover:bg-yellow-600 transition"
+            onClick={handleClearResponse}
           >
-            {option}
+            Clear Response
           </button>
-        ))}
-      </div>
-
-      {/* Bottom Buttons */}
-      <div className="grid grid-cols-2 gap-2 mt-2">
-        <button className="bg-[#49A6CF] text-white py-2 px-4 rounded-md" onClick={handleClearResponse}>
-          Clear Response
-        </button>
-        <button className="bg-[#49A6CF] text-white py-2 px-4 rounded-md" onClick={handleReviewLater}>
-          Review Later
-        </button>
-        <button className="bg-[#49A6CF] text-white py-2 px-4 rounded-md" onClick={() => handleNavigation("prev")}>
-          Previous
-        </button>
-        <button className="bg-[#49A6CF] text-white py-2 px-4 rounded-md" onClick={() => handleNavigation("next")}>
-          Next
-        </button>
-      </div>
-
-      <div className="flex justify-center mt-4">
-        <Link href="/result">
-          <button className="bg-[#e51d1d] text-white py-2 px-5 rounded-sm font-bold text-lg">
-            Submit Test
+          <button
+            className={`py-2 px-2 rounded-md text-xs font-semibold shadow transition ${
+              markedForReview[`${currentSubject}-${currentQuestion}`]
+                ? "bg-purple-700 text-white"
+                : "bg-gradient-to-r from-purple-500 to-blue-500 text-white"
+            }`}
+            onClick={handleReviewLater}
+          >
+            {markedForReview[`${currentSubject}-${currentQuestion}`]
+              ? "Marked for Review"
+              : <><FaFlag className="inline mr-1" />Mark for Review</>}
           </button>
-        </Link>
+        </div>
+        <div className="flex justify-between mt-6">
+          <button
+            className="bg-blue-100 text-blue-700 px-4 py-2 rounded-md text-xs font-semibold shadow hover:bg-blue-200 transition"
+            onClick={() => handleNavigation("prev")}
+            disabled={currentQuestion === 0}
+          >
+            Previous
+          </button>
+          <button
+            className="bg-blue-600 text-white px-4 py-2 rounded-md text-xs font-semibold shadow hover:bg-blue-700 transition"
+            onClick={() => handleNavigation("next")}
+          >
+            Next
+          </button>
+        </div>
       </div>
     </div>
   );

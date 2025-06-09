@@ -4,19 +4,31 @@ import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   FiMenu,
-  FiSearch,
-  FiChevronLeft,
-  FiHome,
-  FiTarget,
-  FiEdit,
-  FiBarChart,
-  FiTrendingUp,
-  FiAward,
-  FiBook,
-  FiLogOut,
 } from "react-icons/fi";
-import { MdLeaderboard, MdAnalytics } from "react-icons/md"; // New Icons for Leaderboard & Analytics
+import {
+  FaTachometerAlt,
+  FaBullseye,
+  FaClipboardList,
+  FaPoll,
+  FaChartLine,
+  FaUniversity,
+  FaCookie,
+  FaBook,
+  FaTablets,
+} from "react-icons/fa";
 import axios from "axios";
+
+const sidebarLinks = [
+  { name: "Dashboard", path: "/dashboard", icon: <FaTachometerAlt /> },
+  { name: "Exam Plan", path: "/goalsetup", icon: <FaBullseye /> },
+  { name: "Test", path: "/testselection", icon: <FaClipboardList /> },
+  { name: "Result", path: "/pasttest", icon: <FaPoll /> },
+  { name: "Analytics", path: "/analytics", icon: <FaChartLine /> },
+  { name: "Colleges", path: "/colleges", icon: <FaUniversity /> },
+  { name: "Credits", path: "/credits", icon: <FaCookie /> },
+  { name: "PYQs", path: "/previousyearquestions", icon: <FaTablets /> },
+  { name: "View Notice", path: "/notice", icon: <FaBook /> },
+];
 
 const ToggleBar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -46,7 +58,7 @@ const ToggleBar = () => {
     }
 
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [menuOpen]);
+  }, [menuOpen, profileMenu]);
 
   // Fetch profile image from the backend API
   useEffect(() => {
@@ -68,7 +80,7 @@ const ToggleBar = () => {
           setEmail(response.data.emailAddress);
         }
       } catch (error) {
-        console.error("Error fetching profile image:", error);
+        // fallback
       }
     };
 
@@ -91,7 +103,7 @@ const ToggleBar = () => {
           </button>
 
           {/* Center Text */}
-          <h1 className="text-lg font-semibold text-gray-700">Overview</h1>
+          <h1 className="text-lg font-semibold text-gray-700">Menu</h1>
 
           {/* Profile Picture */}
           <div className="w-8 h-8 rounded-full overflow-hidden" ref={profileRef} onClick={toggleProfileMenu}>
@@ -117,13 +129,6 @@ const ToggleBar = () => {
                 </button>
               </div>
             )}
-          </div>
-        </div>
-
-        {/* Search Bar */}
-        <div className="w-full flex justify-center p-1 mt-3">
-          <div className="w-full max-w-screen-lg flex items-center h-[50px] mx-3">
-            {/* Search Input */}
           </div>
         </div>
       </div>
@@ -153,16 +158,9 @@ const ToggleBar = () => {
             <p className="text-sm text-gray-500">{email}</p>
           </div>
 
-          {/* Menu Items */}
+          {/* Sidebar Navigation (Same as Desktop) */}
           <div className="mt-10 space-y-6">
-            {[{ name: "Home", path: "/", icon: <FiHome /> },
-              { name: "Exam Plan", path: "/examplan", icon: <FiTarget /> },
-              { name: "Result", path: "/pasttest", icon: <FiBarChart /> },
-              { name: "Analytics", path: "/analytics", icon: <MdAnalytics /> }, 
-              // { name: "Leaderboard", path: "/result", icon: <MdLeaderboard /> },
-              { name: "Colleges", path: "/colleges", icon: <FiBook /> },
-              { name: "Logout", path: "/login", icon: <FiLogOut /> },
-            ].map((item) => (
+            {sidebarLinks.map((item) => (
               <button
                 key={item.name}
                 className="w-full text-left flex items-center gap-3 text-gray-700 font-bold hover:text-blue-600 text-base"

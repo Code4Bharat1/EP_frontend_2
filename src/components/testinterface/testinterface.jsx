@@ -133,49 +133,20 @@ const TestInterface = () => {
     seconds: timer % 60,
   };
   
-  const handleOptionClick = (index) => {
-  if (!questionsData[currentSubject] || !questionsData[currentSubject][currentQuestion]) {
-    return;
-  }
+const handleOptionClick = (optionIndex) => {
+  if (!questionsData[currentSubject] || !questionsData[currentSubject][currentQuestion]) return;
 
-  // Get current question data
-  const currentQData = questionsData[currentSubject][currentQuestion];
   const questionKey = `${currentSubject}-${currentQuestion}`;
-  
-  // Find correct answer index
-  const correctIndex = currentQData.options.findIndex(
-    opt => opt === currentQData.correctOption
-  );
-  
-  // Get previous answer if exists
-  const previousAnswer = answers[questionKey];
-  const currentAnswers = JSON.parse(localStorage.getItem("testAnswers")) || {};
-
-  // Remove previous correct count if existed
-  if (previousAnswer !== undefined && previousAnswer === correctIndex) {
-    const subjectKey = `${currentSubject.toLowerCase()}_correct`;
-    currentAnswers[subjectKey] = Math.max((currentAnswers[subjectKey] || 0) - 1, 0);
-  }
-
-  // Update with new answer
-  const newAnswers = { ...answers, [questionKey]: index };
+  const newAnswers = { ...answers, [questionKey]: optionIndex };
   setAnswers(newAnswers);
-  
-  // Update correct count if new answer is correct
-  if (index === correctIndex) {
-    const subjectKey = `${currentSubject.toLowerCase()}_correct`;
-    currentAnswers[subjectKey] = (currentAnswers[subjectKey] || 0) + 1;
-  }
+  localStorage.setItem("testAnswers", JSON.stringify(newAnswers));
 
-  // Save to localStorage
-  currentAnswers[questionKey] = index;
-  localStorage.setItem("testAnswers", JSON.stringify(currentAnswers));
-
-  // Update visited questions
+  // Mark as visited
   const newVisited = { ...visitedQuestions, [questionKey]: true };
   setVisitedQuestions(newVisited);
   localStorage.setItem("visitedQuestions", JSON.stringify(newVisited));
 };
+
   
   const handleNavigation = (direction) => {
     const currentTime = new Date().getTime();
@@ -241,100 +212,104 @@ const TestInterface = () => {
     localStorage.setItem("testAnswers", JSON.stringify(currentAnswers));
   };
 
-  const handleSubmit = async () => {
-    const confirmSubmit = window.confirm("Are you sure you want to submit your test?");
-    if (!confirmSubmit) return;
+const handleSubmit = async () => {
+  const confirmSubmit = window.confirm("Are you sure you want to submit your test?");
+  if (!confirmSubmit) return;
 
-    const authToken = localStorage.getItem("authToken");
-    if (!authToken) {
-      toast.error("Authentication failed! Please log in again.", {
-        duration: 5000
-      });
-      return;
-    }
-    
-    const endTime = new Date().toISOString();
-    const startTime = localStorage.getItem("testStartTime") || new Date().toISOString();
-    let correctAnswers = [];
-    let wrongAnswers = [];
-    let notAttempted = [];
-    let totalMarks = 0;
+  const authToken = localStorage.getItem("authToken");
+  if (!authToken) {
+    toast.error("Authentication failed! Please log in again.", { duration: 5000 });
+    return;
+  }
+  
+  const endTime = new Date().toISOString();
+  const startTime = localStorage.getItem("testStartTime") || new Date().toISOString();
+  let correctAnswers = [];
+  let wrongAnswers = [];
+  let notAttempted = [];
+  let totalMarks = 0;
 
-    // Process answers by subject
-    Object.keys(questionsData).forEach((subject) => {
-      questionsData[subject].forEach((question, index) => {
-        const selectedOptionIndex = answers[`${subject}-${index}`];
-        const selectedOption = question.options[selectedOptionIndex] || null;
-        const correctOption = question.options.find(
-          (opt) => opt === question.correctOption
-        );
-        const marks =
-          selectedOption === correctOption
-            ? 4
-            : selectedOption === null
-            ? 0
-            : -1;
+  // New: Object to keep marks per question
+  const perQuestionMarks = {};
 
-        const questionData = [
-          question.id,
-          subject,
-          question.chapter,
-          selectedOption,
-          correctOption,
-          marks,
-          timeSpent[`${subject}-${index}`] || 0,
-        ];
+  // Process answers by subject
+  Object.keys(questionsData).forEach((subject) => {
+    questionsData[subject].forEach((question, index) => {
+      const key = `${subject}-${index}`;
+      const selectedOptionIndex = answers[key];
+      const selectedOption = question.options[selectedOptionIndex] || null;
+      const correctOption = question.options.find((opt) => opt === question.correctOption);
 
-        if (selectedOption === null) {
-          notAttempted.push([question.id, subject, question.chapter]);
-        } else if (selectedOption === correctOption) {
-          correctAnswers.push(questionData);
-        } else {
-          wrongAnswers.push(questionData);
-        }
-
-        totalMarks += marks;
-      });
-    });
-
-    const testResults = {
-      correctAnswers,
-      wrongAnswers,
-      notAttempted,
-      startTime,
-      endTime,
-      total_marks: totalMarks,
-    };
-
-    try {
-      const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/fulltest/submit`,
-        testResults,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${authToken}`,
-          },
-        }
-      );
-
-      if (response.status === 201) {
-        toast.success("Test submitted successfully!", {
-          duration: 5000
-        });
-        window.location.href = "/result";
+      let marks = 0;
+      if (selectedOption === correctOption) {
+        marks = 4;
+      } else if (selectedOption === null) {
+        marks = 0;
       } else {
-        toast.error("Failed to submit test.", {
-          duration: 5000
-        });
+        marks = -1;
       }
-    } catch (error) {
-      toast.error(
-        "Error submitting test: " + (error.response?.data?.message || error.message),
-        { duration: 5000 }
-      );
-    }
+      perQuestionMarks[key] = marks;
+      totalMarks += marks;
+
+      const questionData = [
+        question.id,
+        subject,
+        question.chapter,
+        selectedOption,
+        correctOption,
+        marks,
+        timeSpent[key] || 0,
+      ];
+
+      if (selectedOption === null) {
+        notAttempted.push([question.id, subject, question.chapter]);
+      } else if (selectedOption === correctOption) {
+        correctAnswers.push(questionData);
+      } else {
+        wrongAnswers.push(questionData);
+      }
+    });
+  });
+
+  // --- Save to localStorage ---
+  localStorage.setItem("perQuestionMarks", JSON.stringify(perQuestionMarks));
+  localStorage.setItem("totalMarks", totalMarks.toString());
+
+  const testResults = {
+    correctAnswers,
+    wrongAnswers,
+    notAttempted,
+    startTime,
+    endTime,
+    total_marks: totalMarks,
   };
+
+  try {
+    const response = await axios.post(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/fulltest/submit`,
+      testResults,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+      }
+    );
+
+    if (response.status === 201) {
+      toast.success("Test submitted successfully!", { duration: 5000 });
+      window.location.href = "/result";
+    } else {
+      toast.error("Failed to submit test.", { duration: 5000 });
+    }
+  } catch (error) {
+    toast.error(
+      "Error submitting test: " + (error.response?.data?.message || error.message),
+      { duration: 5000 }
+    );
+  }
+};
+
   
   // Helper functions for stats
   const getAnsweredCountBySubject = (subject) => {

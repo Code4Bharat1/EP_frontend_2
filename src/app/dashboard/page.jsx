@@ -14,6 +14,7 @@ import OverallPerformanceCard from "@/components/dashboard/OverallPerformanceCar
 import MostVisitedPageCard from "@/components/dashboard/MostVisitedCard";
 import PerformanceSummaryCard from "@/components/dashboard/PerformanceSummaryCard";
 import jsPDF from "jspdf";
+import Chatbot from "@/components/chatbot/chatbot";
 
 const Page = () => {
   const [selectedFilter, setSelectedFilter] = useState("This Year");
@@ -52,6 +53,7 @@ const Page = () => {
       {/* Main Content */}
       <div className="w-full md:w-5/6 flex flex-col">
         {/* Excluded Components */}
+          <Chatbot/>
         <ToggleBar />
         <NavBar />
         <Hero selectedFilter={selectedFilter} />

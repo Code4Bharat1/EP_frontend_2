@@ -11,6 +11,8 @@ import {
   FaChartLine,
   FaUniversity,
   FaCookie,
+  FaBook,
+  FaTablets,
 } from 'react-icons/fa';
 import axios from 'axios';
 import {jwtDecode} from 'jwt-decode';
@@ -80,6 +82,8 @@ const Sidebar = ({ isOpen }) => {
             { href: '/analytics', icon: FaChartLine, label: 'Analytics' },
             { href: '/colleges', icon: FaUniversity, label: 'Colleges' },
             { href: '/credits', icon: FaCookie, label: 'Credits' },
+            { href : '/previousyearquestions', icon: FaTablets, label : 'PYQs'},
+            { href: "/notice", icon: FaBook, label : 'View Notice'}
           ].map(({ href, icon: Icon, label }) => (
             <li key={href} className="hover:opacity-80 cursor-pointer">
               <Link href={href} className="flex items-center space-x-3" style={{ color: colors.textColor }}>

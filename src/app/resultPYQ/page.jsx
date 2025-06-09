@@ -1,68 +1,67 @@
 "use client";
-
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import Confetti from "react-confetti";
 import { useWindowSize } from "react-use";
-import { FaFlask, FaAtom, FaDna } from "react-icons/fa";
+import { FaFlask, FaAtom, FaDna, FaEye } from "react-icons/fa";
 
-// Subjects metadata (icons and colors)
-const subjectIcons = {
-  Physics: <FaAtom className="text-red-500 text-xl" />,
-  Chemistry: <FaFlask className="text-yellow-500 text-xl" />,
-  Biology: <FaDna className="text-green-500 text-xl" />,
-};
-const subjectBgColors = {
-  Physics: "bg-red-100",
-  Chemistry: "bg-yellow-100",
-  Biology: "bg-green-100",
+const subjectMapping = {
+  Physics: {
+    icon: <FaAtom className="text-red-500 text-xl" />,
+    bgColor: "bg-red-100",
+  },
+  Chemistry: {
+    icon: <FaFlask className="text-yellow-500 text-xl" />,
+    bgColor: "bg-yellow-100",
+  },
+  Biology: {
+    icon: <FaDna className="text-green-500 text-xl" />,
+    bgColor: "bg-green-100",
+  },
+  Botany: {
+    icon: <FaEye className="text-purple-500 text-xl" />,
+    bgColor: "bg-purple-100",
+  },
 };
 
 const ResultPage = () => {
   const router = useRouter();
   const { width, height } = useWindowSize();
+
+  const [score, setScore] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
   const [subjects, setSubjects] = useState([]);
-  const [totalScore, setTotalScore] = useState(0);
-  const [totalMax, setTotalMax] = useState(0);
+  const [totalPossibleMarks, setTotalPossibleMarks] = useState(0);
 
   useEffect(() => {
-    // Get marks and answers from localStorage
-    const perQuestionMarks = JSON.parse(localStorage.getItem("perQuestionMarks") || "{}");
-    const testAnswers = JSON.parse(localStorage.getItem("testAnswers") || "{}");
-
-    // Prepare subject-wise score breakdown
-    const subjectScores = {};
-    const subjectQuestions = {};
-
-    // Fill subjectScores and count max questions per subject
-    Object.entries(perQuestionMarks).forEach(([key, mark]) => {
-      const [subject] = key.split("-");
-      subjectScores[subject] = (subjectScores[subject] || 0) + (mark || 0);
-      subjectQuestions[subject] = (subjectQuestions[subject] || 0) + 1;
+    // Get marks per subject
+    const marks = JSON.parse(localStorage.getItem("marks")) || {};
+    // To get total possible marks, you need to know how many questions per subject
+    // Here, we try to get from your previous session: you can adapt this logic
+    const questionsData = JSON.parse(localStorage.getItem("questionsData")) || {};
+    let totalMarks = 0;
+    let subjArr = [];
+    Object.entries(marks).forEach(([subject, subjScore]) => {
+      // Assume each question = 4 marks
+      let numQuestions = 0;
+      if (questionsData[subject]) numQuestions = questionsData[subject].length;
+      const max = numQuestions * 4;
+      totalMarks += max;
+      subjArr.push({
+        name: subject,
+        score: subjScore,
+        max: max,
+        icon: subjectMapping[subject]?.icon || <FaAtom className="text-gray-500 text-xl" />,
+        bgColor: subjectMapping[subject]?.bgColor || "bg-gray-100",
+      });
     });
+    setSubjects(subjArr);
+    setScore(Object.values(marks).reduce((a, b) => a + b, 0));
+    setTotalPossibleMarks(totalMarks);
 
-    // If you want fixed max for each subject (e.g. Physics: 45 Qs × 4 marks = 180), you can hardcode here.
-    // Or, for dynamic:
-    const subjectsArray = Object.keys(subjectScores).map(subject => ({
-      name: subject,
-      icon: subjectIcons[subject],
-      bgColor: subjectBgColors[subject],
-      score: subjectScores[subject],
-      max: (subjectQuestions[subject] || 0) * 4,
-    }));
-
-    setSubjects(subjectsArray);
-
-    const total = subjectsArray.reduce((acc, subj) => acc + subj.score, 0);
-    const max = subjectsArray.reduce((acc, subj) => acc + subj.max, 0);
-
-    setTotalScore(total);
-    setTotalMax(max);
-
-    // Show confetti if percentage >= 70%
-    if (max && (total / max) * 100 >= 70) {
+    // Confetti if >= 70%
+    if (totalMarks > 0 && (Object.values(marks).reduce((a, b) => a + b, 0) / totalMarks) * 100 >= 70) {
       setShowConfetti(true);
       const timer = setTimeout(() => setShowConfetti(false), 6000);
       return () => clearTimeout(timer);
@@ -70,17 +69,22 @@ const ResultPage = () => {
   }, []);
 
   const handleRetakeTest = () => {
-    router.push("/testinterfaceplan?subject=Physics&chapter=Motion&allocatedQuestions=45");
+    router.push("/testinterface");
+    localStorage.removeItem("marks");
   };
 
   return (
     <div className="h-screen w-screen overflow-hidden flex items-center justify-center bg-gray-100 relative">
       {showConfetti && (
-        <Confetti width={width} height={height} numberOfPieces={500} recycle={false} />
+        <Confetti
+          width={width}
+          height={height}
+          numberOfPieces={500}
+          recycle={false}
+        />
       )}
-
       <div className="w-full h-full flex flex-col md:flex-row bg-white shadow-lg">
-        {/* Left Section - Overall Score */}
+        {/* Left Section - Overall Score Display */}
         <motion.div
           className="w-full md:w-[40%] h-full bg-gradient-to-b from-[#0077B6] to-[#ADE8F4] flex flex-col items-center justify-center text-white p-6 rounded-r-3xl"
           initial={{ opacity: 0, x: -50 }}
@@ -94,28 +98,34 @@ const ResultPage = () => {
             animate={{ scale: 1 }}
             transition={{ duration: 0.5, type: "spring" }}
           >
-            <motion.span className="text-4xl font-bold">{totalScore}</motion.span>
-            <motion.span className="text-lg">of {totalMax}</motion.span>
+            <motion.span className="text-4xl font-bold">{score}</motion.span>
+            <motion.span className="text-lg">
+              of {totalPossibleMarks}
+            </motion.span>
           </motion.div>
           <motion.h3 className="text-xl font-semibold mt-4">
-            {totalMax && (totalScore / totalMax) * 100 >= 70 ? "Excellent 🎉" : "Keep Improving 💪"}
+            {totalPossibleMarks > 0 && (score / totalPossibleMarks) * 100 >= 70
+              ? "Excellent 🎉"
+              : "Keep Improving 💪"}
           </motion.h3>
           <motion.p className="text-sm text-center px-6 mt-2">
-            Your percentage: {totalMax ? Math.round((totalScore / totalMax) * 100) : 0}%
+            Your percentage:{" "}
+            {totalPossibleMarks > 0
+              ? Math.round((score / totalPossibleMarks) * 100)
+              : 0}%
           </motion.p>
         </motion.div>
-
-        {/* Right Section - Subject Summary */}
+        {/* Right Section - Subject Summary and Actions */}
         <motion.div
           className="w-full md:w-[60%] h-full p-6 flex flex-col justify-center"
           initial={{ opacity: 0, x: 50 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <motion.h2 className="text-4xl text-center font-bold text-gray-700 mb-4">
+          <motion.h2 className="text-4xl font-bold text-gray-700 mb-4">
             Summary
           </motion.h2>
-
+          {/* Render Subject Scores */}
           {subjects.map((subject, index) => (
             <motion.div
               key={index}
@@ -127,7 +137,9 @@ const ResultPage = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   {subject.icon}
-                  <span className="font-semibold text-gray-700">{subject.name}</span>
+                  <span className="font-semibold text-gray-700">
+                    {subject.name}
+                  </span>
                 </div>
                 <span className="font-bold">
                   {subject.score} / {subject.max}
@@ -135,7 +147,7 @@ const ResultPage = () => {
               </div>
             </motion.div>
           ))}
-
+          {/* Action Buttons */}
           <motion.div
             className="flex flex-col gap-3 mt-6 items-center"
             initial={{ opacity: 0, y: 20 }}
@@ -144,7 +156,7 @@ const ResultPage = () => {
           >
             <motion.button
               className="bg-[#303B59] text-white py-2 px-8 rounded-md w-64 text-center hover:bg-gray-800"
-              onClick={() => router.push("/review-mistakeEP")}
+              onClick={() => router.push("/review-mistakeCT")}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
@@ -160,7 +172,7 @@ const ResultPage = () => {
             </motion.button>
             <motion.button
               className="bg-[#303B59] text-white py-2 px-8 rounded-md w-64 text-center hover:bg-gray-800"
-              onClick={() => router.push("/analytics")}
+              onClick={() => router.push("/viewanalyticsCT")}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
