@@ -2,13 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 
 const Chatbot = () => {
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState(() => {
-    const saved = localStorage.getItem("chatHistory");
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const chatEndRef = useRef(null);
+
+  useEffect(()=> {
+    const saved = localStorage.getItem("chatHistory");
+    if (saved) setMessages(JSON.parse(saved));
+  },[])
 
   useEffect(() => {
     localStorage.setItem("chatHistory", JSON.stringify(messages));
