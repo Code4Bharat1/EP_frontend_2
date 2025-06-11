@@ -194,7 +194,7 @@ const AccuracyCard = ({ selectedFilter }) => {
 
 <h2 className="text-2xl font-bold mt-2">{avgAccuracy}%</h2>
 
-<div className="w-full h-45 mt-4"> {/* Increased height */}
+<div className="w-full h-48 mt-4"> {/* Increased height */}
   <ResponsiveContainer width="100%" height="100%">
     <LineChart data={data}>
       <CartesianGrid strokeDasharray="3 3" vertical={false} />
