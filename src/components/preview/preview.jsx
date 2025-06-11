@@ -33,6 +33,7 @@ const Preview = () => {
       localStorage.getItem("selectedChapters") || "{}"
     );
     setSelectedChapters(savedChapters);
+    setSelectedSection("testName");
   }, []);
 
   // Calculate total questions for each subject
@@ -219,7 +220,7 @@ const Preview = () => {
                 : "bg-white text-gray-800"
             }`}
           >
-            ❓ Total Questions
+            📋 Total Questions
           </button>
 
           {/* Total Marks */}

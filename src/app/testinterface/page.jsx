@@ -1,7 +1,7 @@
 'use client'
 import React from 'react';
 import TestInterface from '@/components/testinterface/testinterface';
-import TestInterfaceMobile from '@/components/testinterfacemobile/testinterfacemobile';
+import TestInterfaceMobile from "@/components/testInterfaceMobileView/testInterface"
 
 const Page = () => {
   return (
@@ -13,7 +13,7 @@ const Page = () => {
 
       {/* Mobile View (TestInterfaceMobile will be visible) */}
       <div className="block md:hidden">
-        <TestInterfaceMobile />
+        <TestInterfaceMobile/>
       </div>
     </div>
   );

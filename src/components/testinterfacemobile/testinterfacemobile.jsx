@@ -26,70 +26,63 @@ const TestInterfaceMobile = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Load test setup info and questions
-  useEffect(() => {
-    // Read startTest data from localStorage for per-student info
-    const startTestData = JSON.parse(localStorage.getItem("startTest"));
-    if (startTestData) {
-      setCurrentSubject(startTestData.subject);
-      const allocated = startTestData.allocatedQuestions || 0;
-      setAllocatedQuestions(allocated);
+useEffect(() => {
+  const startTestData = JSON.parse(localStorage.getItem("startTest"));
+  if (startTestData) {
+    setCurrentSubject(startTestData.subject);
+    const allocated = startTestData.allocatedQuestions || 0;
+    setAllocatedQuestions(allocated);
 
-      // 1 minute per question
-      const timeInSeconds = allocated * 60;
-      setTimer(timeInSeconds);
+    const testStartTime = new Date(startTestData.startTime || Date.now());
+    const testEnd = new Date(testStartTime.getTime() + allocated * 60000);
+    setTestEndTime(testEnd);
+    localStorage.setItem("testStartTime", testStartTime.toISOString());
+    setVisitedQuestions({ [`${startTestData.subject}-0`]: true });
+  }
 
-      // End time calculation
-      const endTime = new Date();
-      endTime.setSeconds(endTime.getSeconds() + timeInSeconds);
-      setTestEndTime(endTime);
-
-      // Mark first question as visited
-      setVisitedQuestions({ [`${startTestData.subject}-0`]: true });
-    }
-
-    // Fetch questions
-    const fetchQuestions = async () => {
-      try {
-        const response = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/question/fetch-questions`
-        );
-        const data = response.data;
-        const subjectWiseQuestions = { Physics: [], Chemistry: [], Biology: [] };
-        data.questions.forEach((item) => {
-          const subject = item.question.subject;
-          subjectWiseQuestions[subject]?.push({
-            id: item.question.id,
-            question: item.question.question_text,
-            options: item.options.map((opt) => opt.option_text),
-            correctOption: item.options.find((opt) => opt.is_correct)?.option_text,
-          });
+  const fetchQuestions = async () => {
+    try {
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/question/fetch-questions`
+      );
+      const data = response.data;
+      const subjectWiseQuestions = { Physics: [], Chemistry: [], Biology: [] };
+      data.questions.forEach((item) => {
+        const subject = item.question.subject;
+        subjectWiseQuestions[subject]?.push({
+          id: item.question.id,
+          question: item.question.question_text,
+          options: item.options.map((opt) => opt.option_text),
+          correctOption: item.options.find((opt) => opt.is_correct)?.option_text,
         });
-        setQuestionsData(subjectWiseQuestions);
-        setLoading(false);
-      } catch (err) {
-        setError("Failed to load questions");
-        setLoading(false);
-      }
-    };
-    fetchQuestions();
-  }, []);
+      });
+      setQuestionsData(subjectWiseQuestions);
+      setLoading(false);
+    } catch (err) {
+      setError("Failed to load questions");
+      setLoading(false);
+    }
+  };
+  fetchQuestions();
+}, []);
 
-  // Timer logic (ends test at timeout)
-  useEffect(() => {
-    if (!testEndTime) return;
-    const countdown = setInterval(() => {
-      const now = new Date();
-      const diff = Math.floor((testEndTime - now) / 1000);
-      if (diff <= 0) {
-        clearInterval(countdown);
-        setTimer(0);
-        handleSubmit();
-      } else {
-        setTimer(diff);
-      }
-    }, 1000);
-    return () => clearInterval(countdown);
-  }, [testEndTime]);
+// Ensure timer effect runs continuously
+useEffect(() => {
+  if (!testEndTime) return;
+  const timerInterval = setInterval(() => {
+    const now = new Date();
+    const secondsLeft = Math.floor((testEndTime - now) / 1000);
+    if (secondsLeft <= 0) {
+      clearInterval(timerInterval);
+      setTimer(0);  
+      handleSubmit();
+    } else {
+      setTimer(secondsLeft);
+    }
+  }, 1000);
+
+  return () => clearInterval(timerInterval);
+}, [testEndTime]);
 
   // Timer formatting
   const formattedTime = {

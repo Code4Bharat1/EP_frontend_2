@@ -59,20 +59,38 @@ const TestInterfaceMobile = () => {
   }, []);
 
   useEffect(() => {
-    const startTestData = JSON.parse(localStorage.getItem("startTest"));
-    if (startTestData) {
-      setCurrentSubject(startTestData.subject);
-      const allocatedQuestions = startTestData.allocatedQuestions || 0;
-      setAllocatedQuestions(allocatedQuestions);
-      if (allocatedQuestions > 0) {
-        setLastIndex(allocatedQuestions);
-      }
+    const selectedSubjectsFromLS = JSON.parse(localStorage.getItem("selectedSubjects")) || [];
+const selectedChapters = JSON.parse(localStorage.getItem("selectedChapters")) || {};
 
-      const filteredSubject = subjects.filter(
-        (subject) => subject.name === startTestData.subject
-      );
-      setSelectedSubjects(filteredSubject);
-    }
+if (selectedSubjectsFromLS.length > 0) {
+  setSelectedSubjects(selectedSubjectsFromLS.map(name => ({
+    name,
+    icon:
+      name === "Physics" ? <FaAtom className="text-lg text-blue-500" /> :
+      name === "Chemistry" ? <FaFlask className="text-lg text-green-500" /> :
+      name === "Biology" ? <FaDna className="text-lg text-red-500" /> :
+      null
+  })));
+
+  setCurrentSubject(selectedSubjectsFromLS[0]);
+
+  let totalCount = 0;
+  selectedSubjectsFromLS.forEach(subject => {
+    const chapters = selectedChapters[subject] || {};
+    totalCount += Object.values(chapters).reduce(
+      (sum, chapter) => sum + (parseInt(chapter.numQuestions) || 0),
+      0
+    );
+  });
+
+  setAllocatedQuestions(totalCount);
+  setLastIndex(totalCount);
+  setTimer(totalCount * 60);
+
+  const startTime = new Date().toISOString();
+  localStorage.setItem("testStartTime", startTime);
+}
+
   }, []);
 
   useEffect(() => {

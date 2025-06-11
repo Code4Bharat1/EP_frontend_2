@@ -222,25 +222,44 @@ const Createtest = () => {
 
       {/* Popup for Test Name */}
       {showPopup && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-[350px]">
-            <h2 className="text-lg font-semibold mb-4">Enter Your Test Name</h2>
-            <input
-              type="text"
-              placeholder="Test Name"
-              value={testName}
-              onChange={(e) => setTestName(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md mb-4"
-            />
-            <button
-              onClick={handleSubmitTestName}
-              className="px-4 py-2 bg-[#54ADD3] text-white rounded-md"
-            >
-              Submit
-            </button>
-          </div>
-        </div>
-      )}
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
+    <div className="bg-white rounded-xl shadow-xl p-6 w-[90%] max-w-sm">
+      <h2 className="text-xl font-semibold text-gray-800 mb-4 text-center">
+        Enter Your Test Name
+      </h2>
+
+      <input
+        type="text"
+        placeholder="Test Name"
+        value={testName}
+        onChange={(e) => setTestName(e.target.value)}
+        className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 mb-4"
+      />
+
+      <div className="flex justify-between gap-3">
+        <button
+          onClick={() => setShowPopup(false)} // cancel action
+          className="w-1/2 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100 transition"
+        >
+          Cancel
+        </button>
+
+        <button
+          onClick={handleSubmitTestName}
+          disabled={!testName.trim()}
+          className={`w-1/2 py-2 rounded-md text-white font-semibold transition ${
+            testName.trim()
+              ? "bg-[#54ADD3] hover:bg-[#429abc]"
+              : "bg-gray-300 cursor-not-allowed"
+          }`}
+        >
+          Submit
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
     </div>
   );
 };

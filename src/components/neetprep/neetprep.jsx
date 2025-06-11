@@ -137,8 +137,8 @@ const NeetPrep = () => {
 
         {/* Subject Wise Selection */}
         <motion.div className="mt-8" variants={fadeIn}>
-          <label className="block text-sm font-medium text-center">
-            Subject Wise <span className="text-red-500">*</span>
+          <label className="block text-md font-medium text-center">
+            Subject Wise 
           </label>
           <div className="flex flex-wrap justify-center gap-4 mt-4">
             {Object.keys(subjectUnits || {}).map((subject) => (
@@ -172,8 +172,8 @@ const NeetPrep = () => {
               className="bg-white p-4 mt-8 rounded-lg border w-11/12 mx-auto"
               variants={fadeIn}
             >
-              <h2 className="text-lg font-semibold mb-4">
-                {subject} Chapters <span className="text-red-500">*</span>
+              <h2 className="text-2xl font-bold mb-4">
+                {subject} Chapters 
               </h2>
               <div className="space-y-4">
               {/* // Inside your map function where you render each unit */}

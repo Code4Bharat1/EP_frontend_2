@@ -347,7 +347,7 @@ const handleSubmit = async () => {
       {/* Header with Timer */}
       <div className="bg-white shadow-md py-4 sticky top-0 z-10">
         <div className="container mx-auto px-4 flex flex-col md:flex-row justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-800 mb-2 md:mb-0">{testName}</h1>
+          <h1 className="text-2xl font-bold text-gray-800 mb-2 md:mb-0">NEET FULL TEST</h1>
           
           <div className="flex flex-wrap gap-4 items-center">
             {/* Timer Display */}

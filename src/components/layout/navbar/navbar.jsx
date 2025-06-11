@@ -5,7 +5,7 @@ import { IoMdNotifications } from "react-icons/io";
 import { MdAccountCircle, MdLogout } from "react-icons/md";
 import axios from "axios";
 import Link from "next/link";
-import { FaCookie } from "react-icons/fa";
+import { FaMedal } from "react-icons/fa";
 import { jwtDecode } from "jwt-decode";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -187,7 +187,7 @@ const NavBar = () => {
           className="flex items-center bg-gray-600 px-3 space-x-2 py-1 rounded-sm"
           title="Cookies"
         >
-          <FaCookie className="text-xl text-yellow-400" />
+          <FaMedal className="text-xl text-yellow-400" />
           <p className="text-lg text-white">{result}</p>
         </div>
 

@@ -37,7 +37,9 @@ const PastTest = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterOption, setFilterOption] = useState("all");
-  const [showFilter, setShowFilter] = useState(false);
+  const [showScoreFilter, setShowScoreFilter] = useState(false);
+  const [showTypeFilter, setShowTypeFilter] = useState(false);
+  const [testTypeFilter, setTestTypeFilter] = useState("all");
 
   useEffect(() => {
     const fetchPastTests = async () => {
@@ -51,7 +53,22 @@ const PastTest = () => {
             },
           }
         );
-        setTestResults(response.data.testAnalytics);
+
+        // console.log(response.data.generatedTests);
+        // console.log(response.data.meTests);
+
+        const fullTest = response.data.fullTests.map(test => ({ ...test, type: "fullTest" }));
+        const meTest = response.data.meTests.map(test => ({ ...test, type: "meTest" }));
+        const generatedTest = response.data.generatedTests.map(test => ({ ...test, type: 'generatedTest' }));
+
+        const allTests = [
+          ...fullTest,
+          ...meTest,
+          ...generatedTest,
+        ];
+
+        allTests.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        setTestResults(allTests);
       } catch (err) {
         setError("Failed to fetch past test results");
         console.error(err);
@@ -63,13 +80,12 @@ const PastTest = () => {
     fetchPastTests();
   }, []);
 
-  // Calculate score percentage for a test
   const calculateScore = (test) => {
     const hasMainData = test.correct !== undefined && test.incorrect !== undefined && test.unattempted !== undefined;
     const hasAltData = test.correctAnswersCount !== undefined && test.wrongAnswersCount !== undefined && test.notAttemptedCount !== undefined;
-    
+
     let correctValue, totalQuestions;
-    
+
     if (hasMainData) {
       correctValue = test.correct;
       totalQuestions = test.correct + test.incorrect + test.unattempted;
@@ -83,40 +99,39 @@ const PastTest = () => {
     return totalQuestions > 0 ? Math.round((correctValue / totalQuestions) * 100) : 0;
   };
 
-  // Filter and search logic
-  const filteredResults = testResults.filter((test) => {
-    const matchesSearch = searchQuery === "" || 
-      (test.testName && test.testName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (test.testId && test.testId.toString().toLowerCase().includes(searchQuery.toLowerCase()));
-    
-    if (!matchesSearch) return false;
+  const formatDateTime = (dateString) => {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('en-US', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(date);
+  };
 
-    if (filterOption === "all") return true;
-    
+  const filteredResults = testResults.filter((test) => {
+  const matchesSearch = searchQuery === "" || 
+    (test.testName && test.testName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (test.testId && test.testId.toString().toLowerCase().includes(searchQuery.toLowerCase()));
+
+  const matchesScoreFilter = (() => {
     const score = calculateScore(test);
     if (filterOption === "best") return score >= 80;
     if (filterOption === "lowest") return score < 50;
-    
     return true;
-  });
+  })();
 
-  // Sort by performance if filter is applied
-  const sortedResults = [...filteredResults].sort((a, b) => {
-    if (filterOption === "best" || filterOption === "lowest") {
-      const scoreA = calculateScore(a);
-      const scoreB = calculateScore(b);
-      return filterOption === "best" ? scoreB - scoreA : scoreA - scoreB;
-    }
-    return 0;
-  });
+  const matchesType = testTypeFilter === "all" || test.type === testTypeFilter;
 
-  // Pagination logic
+  return matchesSearch && matchesScoreFilter && matchesType;
+});
+
+
+  const sortedResults = [...filteredResults];
+
   const totalPages = Math.ceil(sortedResults.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
   const paginatedResults = sortedResults.slice(startIndex, endIndex);
 
-  // Reset to page 1 when search or filter changes
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, filterOption]);
@@ -133,6 +148,7 @@ const PastTest = () => {
     }
     return null;
   };
+
 
   if (loading) {
     return (
@@ -198,8 +214,10 @@ const PastTest = () => {
 
           {/* Filter Button */}
           <div className="relative">
-            <button
-              onClick={() => setShowFilter(!showFilter)}
+           <button onClick={() => {
+  setShowScoreFilter(prev => !prev);
+  setShowTypeFilter(false);
+}}
               className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
               <FaFilter className="text-gray-400" />
@@ -211,7 +229,7 @@ const PastTest = () => {
             </button>
 
             {/* Filter Dropdown */}
-            {showFilter && (
+            {showScoreFilter  && (
               <div className="absolute top-full mt-2 right-0 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-10 w-48">
                 <button
                   onClick={() => {
@@ -249,6 +267,51 @@ const PastTest = () => {
               </div>
             )}
           </div>
+          <div className="relative">
+<button onClick={() => {
+  setShowTypeFilter(prev => !prev);
+  setShowScoreFilter(false);
+}}
+    className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+  >
+    <FaFilter className="text-gray-400" />
+    <span className="text-gray-700">
+      {testTypeFilter === "all"
+        ? "All Test Types"
+        : testTypeFilter === "fullTest"
+        ? "Full Tests"
+        : testTypeFilter === "meTest"
+        ? "Me Tests"
+        : "Generated Tests"}
+    </span>
+  </button>
+
+  {showTypeFilter  && (
+    <div className="absolute top-full mt-2 right-0 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-10 w-48">
+      {["all", "fullTest", "meTest", "generatedTest"].map((type) => (
+        <button
+          key={type}
+          onClick={() => {
+            setTestTypeFilter(type);
+            setShowFilter(false);
+          }}
+          className={`w-full px-4 py-2 text-left hover:bg-gray-50 ${
+            testTypeFilter === type ? "bg-blue-50 text-blue-600" : "text-gray-700"
+          }`}
+        >
+          {type === "all"
+            ? "All Test Types"
+            : type === "fullTest"
+            ? "Full Tests"
+            : type === "meTest"
+            ? "Me Tests"
+            : "Generated Tests"}
+        </button>
+      ))}
+    </div>
+  )}
+</div>
+
         </div>
 
         {/* Results Info */}
@@ -326,9 +389,15 @@ const PastTest = () => {
                     <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6">
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
-                          <CardTitle className="text-xl font-bold mb-1">
-                            {test.testName || "Unnamed Test"}
-                          </CardTitle>
+                          <CardTitle className="text-xl font-bold mb-1 flex flex-col">
+  <span>{test.testName || "Unnamed Test"}</span>
+  {test.createdAt && (
+    <span className="text-sm font-normal text-blue-100">
+      {formatDateTime(test.createdAt)}
+    </span>
+  )}
+</CardTitle>
+
                           <CardDescription className="text-blue-100">
                             {test.subjects ? test.subjects.join(", ") : "No subjects"}
                           </CardDescription>

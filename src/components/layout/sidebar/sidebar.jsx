@@ -13,6 +13,7 @@ import {
   FaCookie,
   FaBook,
   FaTablets,
+  FaMedal,
 } from 'react-icons/fa';
 import axios from 'axios';
 import {jwtDecode} from 'jwt-decode';
@@ -81,7 +82,7 @@ const Sidebar = ({ isOpen }) => {
             { href: '/pasttest', icon: FaPoll, label: 'Result' },
             { href: '/analytics', icon: FaChartLine, label: 'Analytics' },
             { href: '/colleges', icon: FaUniversity, label: 'Colleges' },
-            { href: '/credits', icon: FaCookie, label: 'Credits' },
+            { href: '/credits', icon: FaMedal, label: 'Scholarship' },
             { href : '/previousyearquestions', icon: FaTablets, label : 'PYQs'},
             { href: "/notice", icon: FaBook, label : 'View Notice'}
           ].map(({ href, icon: Icon, label }) => (

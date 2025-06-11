@@ -78,7 +78,6 @@ const SuccessRateCard = ({ selectedFilter }) => {
 
         const totalMarks = calculateTotalMarks(filtered);
 
-        // Calculate success rate (ensure it does not exceed 100%)
         const avgSuccessRate = Math.min(
           Math.round(
             (totalMarks.physics + totalMarks.chemistry + totalMarks.biology) / 3
@@ -86,7 +85,6 @@ const SuccessRateCard = ({ selectedFilter }) => {
           100
         );
 
-        // Determine trend
         const prevRate = data.prevRate || 0;
         const isTrendIncreasing = avgSuccessRate > prevRate;
         const trendPercent = Math.min(
@@ -106,11 +104,9 @@ const SuccessRateCard = ({ selectedFilter }) => {
     fetchData();
   }, [selectedFilter]);
 
-  // Determine trend icon and color
   const trendColor = isIncreasing ? "text-green-500" : "text-red-500";
   const TrendIcon = isIncreasing ? FaArrowUp : FaArrowDown;
 
-  // Prepare chart data
   const chartData = [
     { subject: "Physics", rate: Math.min(data.physics, 100) },
     { subject: "Chemistry", rate: Math.min(data.chemistry, 100) },
@@ -132,12 +128,17 @@ const SuccessRateCard = ({ selectedFilter }) => {
       <h2 className="text-2xl font-bold mt-2">{successRate}%</h2>
 
       {/* Bar Chart */}
-      <div className="w-full h-32 mt-4">
+      <div className="w-full h-48 mt-4"> {/* Increased height from h-32 to h-48 */}
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData} barSize={35}>
             <XAxis dataKey="subject" tickLine={false} axisLine={false} />
-            <YAxis domain={[0, 100]} tickFormatter={(tick) => `${tick}%`} />
-            <Tooltip />
+            <YAxis
+              domain={[0, 100]}
+              ticks={[0, 20, 40, 60, 80, 100]}
+              tickFormatter={(tick) => `${tick}%`}
+              tick={{ fontSize: 12 }}
+            />
+            <Tooltip formatter={(value) => `${value}%`} />
             <Bar dataKey="rate" fill="#FFD599" radius={[5, 5, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>

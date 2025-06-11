@@ -2,6 +2,7 @@
 import React from "react";
 import TestInterface_plan from "@/components/testinterface/testinterface_plan";
 import TestInterfaceMobile from "@/components/testinterfacemobile/testinterfacemobile";
+import TestInterface from '@/components/testInterfaceMobileView/testInterface_plan'
 
 const Page = () => {
   return (
@@ -13,7 +14,7 @@ const Page = () => {
 
       {/* Mobile View (TestInterfaceMobile will be visible) */}
       <div className="block md:hidden">
-        <TestInterfaceMobile />
+        <TestInterface />
       </div>
     </div>
   );

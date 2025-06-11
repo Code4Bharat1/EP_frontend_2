@@ -13,36 +13,42 @@ const Chapters = () => {
   const [chapters, setChapters] = useState({});
   const [selectedSubject, setSelectedSubject] = useState(null);
 
-  useEffect(() => {
-    const savedSubjects = JSON.parse(
-      localStorage.getItem("selectedSubjects") || "[]"
+useEffect(() => {
+  const savedSubjects = JSON.parse(
+    localStorage.getItem("selectedSubjects") || "[]"
+  );
+  const savedChapters = JSON.parse(
+    localStorage.getItem("selectedChapters") || "{}"
+  );
+
+  setSelectedSubjects(savedSubjects);
+
+  // ✅ Auto-select the first subject
+  if (savedSubjects.length > 0) {
+    setSelectedSubject(savedSubjects[0]);
+  }
+
+  // Load chapters dynamically from dataofquestions
+  const dynamicChapters = {};
+  Object.keys(dataofquestions).forEach((subject) => {
+    dynamicChapters[subject] = Object.keys(dataofquestions[subject]).map(
+      (chapterName, index) => ({
+        id: index + 1,
+        name: chapterName,
+        marks: dataofquestions[subject][chapterName].weightage || 4,
+        selected:
+          savedChapters[subject]?.some((ch) => ch.name === chapterName) ||
+          false,
+        numQuestions:
+          savedChapters[subject]?.find((ch) => ch.name === chapterName)
+            ?.numQuestions || 0,
+      })
     );
-    const savedChapters = JSON.parse(
-      localStorage.getItem("selectedChapters") || "{}"
-    );
+  });
 
-    setSelectedSubjects(savedSubjects);
+  setChapters(dynamicChapters);
+}, []);
 
-    // Load chapters dynamically from dataofquestions
-    const dynamicChapters = {};
-    Object.keys(dataofquestions).forEach((subject) => {
-      dynamicChapters[subject] = Object.keys(dataofquestions[subject]).map(
-        (chapterName, index) => ({
-          id: index + 1,
-          name: chapterName,
-          marks: dataofquestions[subject][chapterName].weightage || 4,
-          selected:
-            savedChapters[subject]?.some((ch) => ch.name === chapterName) ||
-            false,
-          numQuestions:
-            savedChapters[subject]?.find((ch) => ch.name === chapterName)
-              ?.numQuestions || 0,
-        })
-      );
-    });
-
-    setChapters(dynamicChapters);
-  }, []);
 
   //Storing the data to local Storage
   const saveChaptersToLocalStorage = (updatedChapters) => {
@@ -136,7 +142,7 @@ const Chapters = () => {
                 Select All
               </button>
 
-              <button className="w-[50%] h-[50px] md:h-[70px] md:w-1/4 px-2 py-3 md:py-6 text-white rounded-lg bg-gradient-to-r from-[#54ADD3] to-[#3184A6] text-[6px] md:text-[11px]">
+              <button className="text-white rounded-lg bg-gradient-to-r from-[#54ADD3] to-[#3184A6] md:text-sm text-[8px] p-2">
                 How Many Questions? <br /> (4 points each):
               </button>
             </div>
@@ -167,17 +173,18 @@ const Chapters = () => {
 
                   <div className="flex items-center gap-1">
                     {/* Input for Number of Questions */}
-                    <input
-                      type="number"
-                      value={chapter.numQuestions || ""}
-                      onChange={(e) =>
-                        handleInputChange(
-                          chapter.id,
-                          Math.max(0, e.target.value)
-                        )
-                      }
-                      className="w-5 md:w-9 h-5 md:h-9 mx-[4px] text-center text-xs"
-                    />
+                   <input
+  type="number"
+  value={chapter.selected ? chapter.numQuestions : ""}
+  onChange={(e) =>
+    handleInputChange(chapter.id, Math.max(0, e.target.value))
+  }
+  disabled={!chapter.selected}
+  className={`w-5 md:w-9 h-5 md:h-9 mx-[4px] text-center text-xs ${
+    !chapter.selected ? "bg-gray-200 cursor-not-allowed" : ""
+  }`}
+/>
+
                   </div>
                 </div>
               ))}

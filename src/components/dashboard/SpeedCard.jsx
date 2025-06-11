@@ -22,7 +22,7 @@ const SpeedCard = ({ changeDate }) => {
     Biology: 0,
     overallAverage: 0,
     testCount: 0,
-  });
+  }); 
   const [prevAvg, setPrevAvg] = useState(40);
 
   useEffect(() => {
@@ -131,21 +131,30 @@ const SpeedCard = ({ changeDate }) => {
       <h2 className="text-2xl font-bold mt-2">{currentAvg}%</h2>
 
       {/* Chart */}
-      <div className="w-full h-32 mt-4">
-        <Bar
-          data={chartData}
-          options={{
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-              y: { beginAtZero: true, max: 100 },
+      <div className="w-full h-48 mt-4">
+  <Bar
+    data={chartData}
+    options={{
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 100,
+          ticks: {
+            callback: function (value) {
+              return value + '%';
             },
-            plugins: {
-              legend: { display: false },
-            },
-          }}
-        />
-      </div>
+          },
+        },
+      },
+      plugins: {
+        legend: { display: false },
+      },
+    }}
+  />
+</div>
+
     </div>
   );
 };
